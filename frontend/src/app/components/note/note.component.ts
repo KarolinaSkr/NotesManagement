@@ -1,7 +1,10 @@
-import { Component, Input, Output, EventEmitter, ElementRef, ViewChild } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ElementRef, ViewChild, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Note } from '../../models/note.model';
+import { ThemeService } from '../../services/theme.service';
+import { Subscription } from 'rxjs';
+
 
 
 @Component({
@@ -102,7 +105,6 @@ import { Note } from '../../models/note.model';
     }
     
     .note-title {
-
       flex: 1;
       border: none;
       background: transparent;
@@ -111,11 +113,19 @@ import { Note } from '../../models/note.model';
       color: #374151;
       outline: none;
       min-width: 0;
+      transition: color 0.3s ease;
     }
     
     .note-title::placeholder {
-
       color: #9ca3af;
+    }
+    
+    :host-context(.dark-mode) .note-title {
+      color: #e5e7eb;
+    }
+    
+    :host-context(.dark-mode) .note-title::placeholder {
+      color: #6b7280;
     }
     
     .delete-btn {
@@ -138,9 +148,17 @@ import { Note } from '../../models/note.model';
     }
     
     .delete-btn:hover {
-
       background-color: rgba(0, 0, 0, 0.1);
       color: #ef4444;
+    }
+    
+    :host-context(.dark-mode) .delete-btn {
+      color: #9ca3af;
+    }
+    
+    :host-context(.dark-mode) .delete-btn:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #f87171;
     }
     
     .note-content {
@@ -153,10 +171,19 @@ import { Note } from '../../models/note.model';
       color: #4b5563;
       outline: none;
       min-height: 100px;
+      transition: color 0.3s ease;
     }
     
     .note-content::placeholder {
       color: #9ca3af;
+    }
+    
+    :host-context(.dark-mode) .note-content {
+      color: #d1d5db;
+    }
+    
+    :host-context(.dark-mode) .note-content::placeholder {
+      color: #6b7280;
     }
     
     .note-footer {
@@ -179,18 +206,20 @@ import { Note } from '../../models/note.model';
       transition: all 0.2s ease;
     }
     
+    :host-context(.dark-mode) .color-btn {
+      border-color: rgba(31, 41, 55, 0.95);
+    }
+    
     .color-btn:hover {
       transform: scale(1.1);
     }
+
     
     .color-btn.active {
       transform: scale(1.3);
       box-shadow: 0 4px 10px rgba(0,0,0,.2);
       background-image: url("data:image/svg+xml;utf8,\
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path d='M20 6L9 17l-5-5' \
-stroke='white' stroke-width='3.5' fill='none' \
-stroke-linecap='round' stroke-linejoin='round'/>\
 <path d='M20 6L9 17l-5-5' \
 stroke='black' stroke-width='1.2' fill='none' \
 stroke-linecap='round' stroke-linejoin='round'/>\
@@ -229,6 +258,16 @@ stroke-linecap='round' stroke-linejoin='round'/>\
       color: #ef4444;
     }
     
+    :host-context(.dark-mode) .tag-badge {
+      background: rgba(255, 255, 255, 0.15);
+      color: #e5e7eb;
+    }
+    
+    :host-context(.dark-mode) .tag-badge:hover {
+      background: rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+    
     .tag-input-container {
       display: flex;
       gap: 6px;
@@ -243,11 +282,27 @@ stroke-linecap='round' stroke-linejoin='round'/>\
       font-size: 12px;
       background: rgba(255, 255, 255, 0.5);
       outline: none;
+      transition: all 0.3s ease;
     }
     
     .tag-input:focus {
       border-color: #4f46e5;
       background: white;
+    }
+    
+    :host-context(.dark-mode) .tag-input {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.3);
+      color: #e5e7eb;
+    }
+    
+    :host-context(.dark-mode) .tag-input:focus {
+      border-color: #818cf8;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    
+    :host-context(.dark-mode) .tag-input::placeholder {
+      color: #6b7280;
     }
     
     .add-tag-btn {
@@ -264,7 +319,6 @@ stroke-linecap='round' stroke-linejoin='round'/>\
       justify-content: center;
       transition: all 0.2s ease;
     }
-
     
     .add-tag-btn:hover {
       background: #4338ca;
@@ -272,7 +326,8 @@ stroke-linecap='round' stroke-linejoin='round'/>\
   `]
 })
 
-export class NoteComponent {
+export class NoteComponent implements OnInit, OnDestroy {
+
   @Input() note!: Note;
   @Output() update = new EventEmitter<Note>();
   @Output() delete = new EventEmitter<number>();
@@ -280,15 +335,55 @@ export class NoteComponent {
   
   @ViewChild('noteElement') noteElement!: ElementRef;
   
-  colors = ['#fef3c7', '#dbeafe', '#fce7f3', '#d1fae5', '#f3e8ff', '#ffedd5'];
+  lightColors = ['#fef3c7', '#dbeafe', '#fce7f3', '#d1fae5', '#f3e8ff', '#ffedd5'];
+  darkColors = ['#92400e', '#1e40af', '#9d174d', '#065f46', '#6b21a8', '#9a3412'];
+  
+  get colors(): string[] {
+    return document.body.classList.contains('dark-mode') ? this.darkColors : this.lightColors;
+  }
+
   newTag = '';
   
   private isDragging = false;
+  private themeSubscription: Subscription | null = null;
+
 
   private startX = 0;
   private startY = 0;
   private initialLeft = 0;
   private initialTop = 0;
+
+  constructor(private themeService: ThemeService) {}
+
+  ngOnInit() {
+    // Subscribe to theme changes to update note color
+    this.themeSubscription = this.themeService.isDarkMode$.subscribe((isDark: boolean) => {
+
+      this.updateNoteColorForTheme(isDark);
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.themeSubscription) {
+      this.themeSubscription.unsubscribe();
+    }
+  }
+
+  private updateNoteColorForTheme(isDark: boolean) {
+    const currentColor = this.note.color;
+    const lightIndex = this.lightColors.indexOf(currentColor);
+    const darkIndex = this.darkColors.indexOf(currentColor);
+    
+    if (isDark && lightIndex !== -1) {
+      // Switch to dark version
+      this.note.color = this.darkColors[lightIndex];
+      this.onUpdate();
+    } else if (!isDark && darkIndex !== -1) {
+      // Switch to light version
+      this.note.color = this.lightColors[darkIndex];
+      this.onUpdate();
+    }
+  }
 
   startDrag(event: MouseEvent) {
     // Don't drag if clicking on input, textarea, or button
@@ -297,6 +392,7 @@ export class NoteComponent {
         (event.target as HTMLElement).tagName === 'BUTTON') {
       return;
     }
+
     
     this.isDragging = true;
     this.startX = event.clientX;
@@ -316,8 +412,22 @@ export class NoteComponent {
     const deltaX = event.clientX - this.startX;
     const deltaY = event.clientY - this.startY;
     
-    this.note.positionX = Math.max(0, this.initialLeft + deltaX);
-    this.note.positionY = Math.max(0, this.initialTop + deltaY);
+    const noteWidth = 300;
+    const noteHeight = this.noteElement.nativeElement.getBoundingClientRect().height;
+    
+    // Get the board container for proper boundary constraints
+    const boardArea = this.noteElement.nativeElement.closest('.board-area');
+    let maxX = window.innerWidth - noteWidth;
+    let maxY = window.innerHeight - noteHeight;
+    
+    if (boardArea) {
+      // Use the board area's client dimensions (padding box) for constraints
+      maxX = boardArea.clientWidth - noteWidth;
+      maxY = boardArea.clientHeight - noteHeight;
+    }
+    
+    this.note.positionX = Math.max(0, Math.min(maxX, this.initialLeft + deltaX));
+    this.note.positionY = Math.max(0, Math.min(maxY, this.initialTop + deltaY));
   }
 
   stopDrag = () => {

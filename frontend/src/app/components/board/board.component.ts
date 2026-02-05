@@ -51,7 +51,13 @@ import { NoteService } from '../../services/note.service';
       min-height: 100vh;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       font-family: 'Inter', sans-serif;
+      transition: background 0.3s ease;
     }
+    
+    :host-context(.dark-mode) .board-container {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    }
+
     
     .board-header {
       display: flex;
@@ -61,14 +67,28 @@ import { NoteService } from '../../services/note.service';
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
       box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+      transition: background 0.3s ease;
     }
+    
+    :host-context(.dark-mode) .board-header {
+      background: rgba(31, 41, 55, 0.95);
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    }
+
     
     .board-header h1 {
       margin: 0;
+      margin-left: 60px;
       font-size: 28px;
       font-weight: 600;
       color: #1f2937;
+      transition: color 0.3s ease;
     }
+    
+    :host-context(.dark-mode) .board-header h1 {
+      color: #f9fafb;
+    }
+
     
     .add-btn {
       display: flex;
@@ -111,6 +131,11 @@ import { NoteService } from '../../services/note.service';
       color: rgba(255, 255, 255, 0.8);
     }
     
+    :host-context(.dark-mode) .empty-state {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    
     .empty-icon {
       font-size: 64px;
       margin-bottom: 16px;
@@ -142,11 +167,23 @@ import { NoteService } from '../../services/note.service';
       color: #374151;
       cursor: pointer;
       outline: none;
+      transition: all 0.3s ease;
     }
     
     .tag-filter:focus {
       border-color: #4f46e5;
     }
+    
+    :host-context(.dark-mode) .tag-filter {
+      background: #374151;
+      border-color: #4b5563;
+      color: #f9fafb;
+    }
+    
+    :host-context(.dark-mode) .tag-filter:focus {
+      border-color: #818cf8;
+    }
+
     
     .clear-filter-btn {
       background: #ef4444;
@@ -294,3 +331,4 @@ export class BoardComponent implements OnInit {
     }
   }
 }
+
