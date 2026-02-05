@@ -28,6 +28,7 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
       ])
     ])
   ],
+
   template: `
 
     <div class="board-container">
@@ -141,13 +142,12 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
     .board-area {
       position: relative;
       min-height: calc(100vh - 100px);
-      padding: 48px;
+      padding: 5px;
     }
     
     .notes-container {
       position: relative;
     }
-
     
     .empty-state {
       position: absolute;
@@ -162,7 +162,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
       color: rgba(255, 255, 255, 0.6);
     }
 
-    
     .empty-icon {
       font-size: 64px;
       margin-bottom: 16px;
@@ -211,7 +210,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
       border-color: #818cf8;
     }
 
-    
     .clear-filter-btn {
       background: #ef4444;
       color: white;
@@ -286,7 +284,7 @@ export class BoardComponent implements OnInit {
   
   clearFilter() {
     this.selectedTag = '';
-    this.filteredNotes = this.notes;
+      this.filteredNotes = this.notes;
   }
 
   

@@ -78,7 +78,7 @@ import { Subscription } from 'rxjs';
     .note {
       position: absolute;
       width: 300px;
-      min-height: 315px;
+      min-height: 300px;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       padding: 16px;
@@ -127,7 +127,7 @@ import { Subscription } from 'rxjs';
     }
     
     :host-context(.dark-mode) .note-title::placeholder {
-      color: #6b7280;
+      color: #9aa0aa;
     }
     
     .delete-btn {
@@ -196,7 +196,7 @@ import { Subscription } from 'rxjs';
     }
     
     .note-content {
-      flex: 1;
+      flex: 0 0 auto;
       border: none;
       background: transparent;
       resize: none;
@@ -204,7 +204,7 @@ import { Subscription } from 'rxjs';
       line-height: 1.5;
       color: #4b5563;
       outline: none;
-      min-height: 100px;
+      height: 170px;
       transition: color 0.3s ease;
     }
     
@@ -217,7 +217,7 @@ import { Subscription } from 'rxjs';
     }
     
     :host-context(.dark-mode) .note-content::placeholder {
-      color: #6b7280;
+      color: #9aa0aa;
     }
     
     .note-footer {
@@ -438,17 +438,28 @@ export class NoteComponent implements OnInit, OnDestroy {
     const noteWidth = 300;
     const noteHeight = this.noteElement.nativeElement.getBoundingClientRect().height;
     
+    // Get the board container for proper boundary constraints
     const boardArea = this.noteElement.nativeElement.closest('.board-area');
-    let maxX = window.innerWidth - noteWidth;
-    let maxY = window.innerHeight - noteHeight;
     
     if (boardArea) {
-      maxX = boardArea.clientWidth - noteWidth;
-      maxY = boardArea.clientHeight - noteHeight;
+      // Get the actual visible dimensions of the board area
+      const boardRect = boardArea.getBoundingClientRect();
+      
+      // Constrain to the board area's visible bounds with small safety margin
+      // 5px margin ensures note doesn't slightly overflow due to rounding/subpixels
+      const maxX = boardRect.width - noteWidth - 10;
+      const maxY = boardRect.height - noteHeight - 5;
+      
+      this.note.positionX = Math.max(0, Math.min(maxX, this.initialLeft + deltaX));
+      this.note.positionY = Math.max(0, Math.min(maxY, this.initialTop + deltaY));
+    } else {
+      // Fallback to viewport constraints
+      const maxX = window.innerWidth - noteWidth - 10;
+      const maxY = window.innerHeight - noteHeight - 10;
+      
+      this.note.positionX = Math.max(0, Math.min(maxX, this.initialLeft + deltaX));
+      this.note.positionY = Math.max(0, Math.min(maxY, this.initialTop + deltaY));
     }
-    
-    this.note.positionX = Math.max(0, Math.min(maxX, this.initialLeft + deltaX));
-    this.note.positionY = Math.max(0, Math.min(maxY, this.initialTop + deltaY));
   }
 
   stopDrag = () => {
