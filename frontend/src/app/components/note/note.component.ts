@@ -18,7 +18,17 @@ import { Subscription } from 'rxjs';
       (mousedown)="startDrag($event)"
       #noteElement>
       
+      <div class="tags-display top-tags-display" *ngIf="note.tags && note.tags.length > 0">
+        <span 
+          *ngFor="let tag of note.tags; let i = index" 
+          class="tag-badge"
+          (click)="removeTag($event, i)">
+          {{tag}} ×
+        </span>
+      </div>
+      
       <div class="note-header">
+
         <input 
           type="text" 
           [(ngModel)]="note.title" 
@@ -36,6 +46,7 @@ import { Subscription } from 'rxjs';
       </div>
       
       <textarea 
+
         [(ngModel)]="note.content" 
         (blur)="onUpdate()"
         placeholder="Write your note here..."
@@ -52,15 +63,7 @@ import { Subscription } from 'rxjs';
           </button>
         </div>
         
-        <div class="tags-section">
-          <div class="tags-display" *ngIf="note.tags && note.tags.length > 0">
-            <span 
-              *ngFor="let tag of note.tags; let i = index" 
-              class="tag-badge"
-              (click)="removeTag($event, i)">
-              {{tag}} ×
-            </span>
-          </div>
+        <div class="tags-input-section">
           <div class="tag-input-container">
             <input 
               type="text" 
@@ -71,8 +74,14 @@ import { Subscription } from 'rxjs';
             <button class="add-tag-btn" (click)="addTag()">+</button>
           </div>
         </div>
+        
+        <div class="note-date" *ngIf="note.createdAt">
+          {{formatDate(note.createdAt)}}
+        </div>
       </div>
     </div>
+
+
   `,
   styles: [`
     .note {
@@ -204,7 +213,7 @@ import { Subscription } from 'rxjs';
       line-height: 1.5;
       color: #4b5563;
       outline: none;
-      height: 170px;
+      height: 190px;
       transition: color 0.3s ease;
     }
     
@@ -250,19 +259,15 @@ import { Subscription } from 'rxjs';
 
     .color-btn.active {
       transform: scale(1.3);
-      box-shadow: 0 4px 10px rgba(0,0,0,.2);
+      box-shadow: 0 2px 5px rgba(0,0,0,.2);
       background-image: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path d='M20 6L9 17l-5-5' \
-stroke='black' stroke-width='1.2' fill='none' \
-stroke-linecap='round' stroke-linejoin='round'/>\
-</svg>");
-  background-repeat: no-repeat;
-  background-position: center;
-    }
-    
-    .tags-section {
-      margin-top: 12px;
+      <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+      <path d='M20 6L9 17l-5-5' \
+      stroke='black' stroke-width='1.2' fill='none' \
+      stroke-linecap='round' stroke-linejoin='round'/>\
+      </svg>");
+      background-repeat: no-repeat;
+      background-position: center;
     }
     
     .tags-display {
@@ -271,6 +276,14 @@ stroke-linecap='round' stroke-linejoin='round'/>\
       gap: 6px;
       margin-bottom: 8px;
       min-height: 24px;
+    }
+    
+    .tags-display.top-tags-display {
+      margin-bottom: 6px;
+    }
+    
+    .tags-input-section {
+      margin-top: 12px;
     }
     
     .tag-badge {
@@ -356,9 +369,22 @@ stroke-linecap='round' stroke-linejoin='round'/>\
     .add-tag-btn:hover {
       background: #4338ca;
     }
+    
+    .note-date {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #6b7280;
+      text-align: right;
+      font-style: italic;
+    }
+    
+    :host-context(.dark-mode) .note-date {
+      color: #9aa0aa;
+    }
   `]
 })
 export class NoteComponent implements OnInit, OnDestroy {
+
   @Input() note!: Note;
   @Output() update = new EventEmitter<Note>();
   @Output() delete = new EventEmitter<number>();
@@ -516,7 +542,19 @@ export class NoteComponent implements OnInit, OnDestroy {
     }
   }
 
+  formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pl-PL', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
   exportToPdf() {
+
     const title = this.note.title || 'Untitled Note';
     const content = this.note.content || '';
     const date = this.note.createdAt ? new Date(this.note.createdAt).toLocaleString() : '';
