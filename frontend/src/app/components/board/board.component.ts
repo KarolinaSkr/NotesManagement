@@ -35,6 +35,15 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
       <header class="board-header">
         <h1>My Notes Board</h1>
         <div class="header-controls">
+          <div class="search-section">
+            <input 
+              type="text" 
+              [(ngModel)]="searchQuery" 
+              (input)="searchNotes()"
+              placeholder="Search notes..." 
+              class="search-input">
+            <button *ngIf="searchQuery" class="clear-search-btn" (click)="clearSearch()">×</button>
+          </div>
           <div class="filter-section">
             <select [(ngModel)]="selectedTag" (change)="filterByTag()" class="tag-filter">
               <option value="">All Tags</option>
@@ -42,6 +51,7 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
             </select>
             <button *ngIf="selectedTag" class="clear-filter-btn" (click)="clearFilter()">×</button>
           </div>
+
           <button class="add-btn" (click)="addNote()">
             <span>+</span>
             Add Note
@@ -178,7 +188,65 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
       gap: 16px;
     }
     
+    .search-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .search-input {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      font-size: 14px;
+      color: #374151;
+      outline: none;
+      transition: all 0.3s ease;
+      width: 200px;
+    }
+    
+    .search-input:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    
+    :host-context(.dark-mode) .search-input {
+      background: #374151;
+      border-color: #4b5563;
+      color: #f9fafb;
+    }
+    
+    :host-context(.dark-mode) .search-input::placeholder {
+      color: #9ca3af;
+    }
+    
+    :host-context(.dark-mode) .search-input:focus {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.1);
+    }
+    
+    .clear-search-btn {
+      background: #6b7280;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    
+    .clear-search-btn:hover {
+      background: #4b5563;
+    }
+    
     .filter-section {
+
       display: flex;
       align-items: center;
       gap: 8px;
@@ -236,8 +304,10 @@ export class BoardComponent implements OnInit {
   filteredNotes: Note[] = [];
   allTags: string[] = [];
   selectedTag: string = '';
+  searchQuery: string = '';
   
   constructor(private noteService: NoteService) {}
+
 
   
   ngOnInit() {
@@ -268,24 +338,44 @@ export class BoardComponent implements OnInit {
   }
   
   filterByTag() {
-    if (this.selectedTag) {
-      this.noteService.getNotesByTag(this.selectedTag).subscribe({
-        next: (notes) => {
-          this.filteredNotes = notes;
-        },
-        error: (error) => {
-          console.error('Error filtering notes:', error);
-        }
-      });
-    } else {
-      this.filteredNotes = this.notes;
-    }
+    this.applyFilters();
   }
+
   
   clearFilter() {
     this.selectedTag = '';
-      this.filteredNotes = this.notes;
+    this.applyFilters();
   }
+
+  searchNotes() {
+    this.applyFilters();
+  }
+
+  clearSearch() {
+    this.searchQuery = '';
+    this.applyFilters();
+  }
+
+  private applyFilters() {
+    let result = this.notes;
+    
+    // Apply tag filter
+    if (this.selectedTag) {
+      result = result.filter(note => note.tags && note.tags.includes(this.selectedTag));
+    }
+    
+    // Apply search filter
+    if (this.searchQuery.trim()) {
+      const query = this.searchQuery.toLowerCase().trim();
+      result = result.filter(note => 
+        (note.title && note.title.toLowerCase().includes(query)) ||
+        (note.content && note.content.toLowerCase().includes(query))
+      );
+    }
+    
+    this.filteredNotes = result;
+  }
+
 
   
   addNote() {
@@ -319,11 +409,8 @@ export class BoardComponent implements OnInit {
             this.notes[index] = updatedNote;
           }
           this.updateAllTags();
-          if (this.selectedTag) {
-            this.filterByTag();
-          } else {
-            this.filteredNotes = [...this.notes];
-          }
+          this.applyFilters();
+
         },
         error: (error) => {
           console.error('Error updating note:', error);
