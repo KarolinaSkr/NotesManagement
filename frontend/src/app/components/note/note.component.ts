@@ -5,13 +5,10 @@ import { Note } from '../../models/note.model';
 import { ThemeService } from '../../services/theme.service';
 import { Subscription } from 'rxjs';
 
-
-
 @Component({
   selector: 'app-note',
   standalone: true,
   imports: [CommonModule, FormsModule],
-
   template: `
     <div 
       class="note"
@@ -28,6 +25,13 @@ import { Subscription } from 'rxjs';
           (blur)="onUpdate()"
           placeholder="Title"
           class="note-title">
+        <button class="pdf-btn" (click)="exportToPdf()" title="Export to PDF">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </button>
         <button class="delete-btn" (click)="onDelete()" title="Delete note">×</button>
       </div>
       
@@ -58,7 +62,6 @@ import { Subscription } from 'rxjs';
             </span>
           </div>
           <div class="tag-input-container">
-
             <input 
               type="text" 
               [(ngModel)]="newTag" 
@@ -69,7 +72,6 @@ import { Subscription } from 'rxjs';
           </div>
         </div>
       </div>
-
     </div>
   `,
   styles: [`
@@ -142,9 +144,41 @@ import { Subscription } from 'rxjs';
       border-radius: 4px;
       transition: all 0.2s ease;
       flex-shrink: 0;
-      margin-left: 8px;
+      margin-left: 4px;
       padding: 0;
       line-height: 1;
+    }
+    
+    .pdf-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      margin-left: 8px;
+      padding: 0;
+      color: #6b7280;
+    }
+    
+    .pdf-btn:hover {
+      background-color: rgba(0, 0, 0, 0.1);
+      color: #4f46e5;
+      transform: scale(1.1);
+    }
+    
+    :host-context(.dark-mode) .pdf-btn {
+      color: #9ca3af;
+    }
+    
+    :host-context(.dark-mode) .pdf-btn:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #818cf8;
     }
     
     .delete-btn:hover {
@@ -214,7 +248,6 @@ import { Subscription } from 'rxjs';
       transform: scale(1.1);
     }
 
-    
     .color-btn.active {
       transform: scale(1.3);
       box-shadow: 0 4px 10px rgba(0,0,0,.2);
@@ -325,9 +358,7 @@ stroke-linecap='round' stroke-linejoin='round'/>\
     }
   `]
 })
-
 export class NoteComponent implements OnInit, OnDestroy {
-
   @Input() note!: Note;
   @Output() update = new EventEmitter<Note>();
   @Output() delete = new EventEmitter<number>();
@@ -346,8 +377,6 @@ export class NoteComponent implements OnInit, OnDestroy {
   
   private isDragging = false;
   private themeSubscription: Subscription | null = null;
-
-
   private startX = 0;
   private startY = 0;
   private initialLeft = 0;
@@ -356,9 +385,7 @@ export class NoteComponent implements OnInit, OnDestroy {
   constructor(private themeService: ThemeService) {}
 
   ngOnInit() {
-    // Subscribe to theme changes to update note color
     this.themeSubscription = this.themeService.isDarkMode$.subscribe((isDark: boolean) => {
-
       this.updateNoteColorForTheme(isDark);
     });
   }
@@ -375,24 +402,20 @@ export class NoteComponent implements OnInit, OnDestroy {
     const darkIndex = this.darkColors.indexOf(currentColor);
     
     if (isDark && lightIndex !== -1) {
-      // Switch to dark version
       this.note.color = this.darkColors[lightIndex];
       this.onUpdate();
     } else if (!isDark && darkIndex !== -1) {
-      // Switch to light version
       this.note.color = this.lightColors[darkIndex];
       this.onUpdate();
     }
   }
 
   startDrag(event: MouseEvent) {
-    // Don't drag if clicking on input, textarea, or button
     if ((event.target as HTMLElement).tagName === 'INPUT' || 
         (event.target as HTMLElement).tagName === 'TEXTAREA' ||
         (event.target as HTMLElement).tagName === 'BUTTON') {
       return;
     }
-
     
     this.isDragging = true;
     this.startX = event.clientX;
@@ -415,13 +438,11 @@ export class NoteComponent implements OnInit, OnDestroy {
     const noteWidth = 300;
     const noteHeight = this.noteElement.nativeElement.getBoundingClientRect().height;
     
-    // Get the board container for proper boundary constraints
     const boardArea = this.noteElement.nativeElement.closest('.board-area');
     let maxX = window.innerWidth - noteWidth;
     let maxY = window.innerHeight - noteHeight;
     
     if (boardArea) {
-      // Use the board area's client dimensions (padding box) for constraints
       maxX = boardArea.clientWidth - noteWidth;
       maxY = boardArea.clientHeight - noteHeight;
     }
@@ -484,4 +505,84 @@ export class NoteComponent implements OnInit, OnDestroy {
     }
   }
 
+  exportToPdf() {
+    const title = this.note.title || 'Untitled Note';
+    const content = this.note.content || '';
+    const date = this.note.createdAt ? new Date(this.note.createdAt).toLocaleString() : '';
+    
+    // Use global pdfMake loaded from CDN
+    const pdfMake = (window as any).pdfMake;
+    
+    if (!pdfMake) {
+      console.error('pdfMake not loaded');
+      alert('PDF export is not available. Please try again later.');
+      return;
+    }
+    
+    // Build document definition
+    const docDefinition: any = {
+      content: [],
+      defaultStyle: {
+        font: 'Roboto'
+      }
+    };
+    
+    // Title
+    docDefinition.content.push({
+      text: title,
+      style: 'header'
+    });
+    
+    // Date
+    if (date) {
+      docDefinition.content.push({
+        text: date,
+        style: 'date'
+      });
+    }
+    
+    // Tags
+    if (this.note.tags && this.note.tags.length > 0) {
+      docDefinition.content.push({
+        text: 'Tags: ' + this.note.tags.join(', '),
+        style: 'tags'
+      });
+    }
+    
+    // Content - preserve line breaks
+    const paragraphs = content.split('\n').map(p => ({
+      text: p || ' ',
+      style: 'content'
+    }));
+    
+    docDefinition.content.push(...paragraphs);
+    
+    // Styles
+    docDefinition.styles = {
+      header: {
+        fontSize: 20,
+        bold: true,
+        margin: [0, 0, 0, 10]
+      },
+      date: {
+        fontSize: 10,
+        italics: true,
+        margin: [0, 0, 0, 10],
+        color: '#666666'
+      },
+      tags: {
+        fontSize: 11,
+        margin: [0, 0, 0, 15],
+        color: '#444444'
+      },
+      content: {
+        fontSize: 12,
+        margin: [0, 0, 0, 6],
+        lineHeight: 1.4
+      }
+    };
+    
+    const filename = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_note.pdf`;
+    pdfMake.createPdf(docDefinition).download(filename);
+  }
 }
