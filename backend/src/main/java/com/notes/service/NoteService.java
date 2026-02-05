@@ -39,10 +39,16 @@ public class NoteService {
             note.setPositionX(noteDetails.getPositionX());
             note.setPositionY(noteDetails.getPositionY());
             note.setColor(noteDetails.getColor());
+            note.setTags(noteDetails.getTags());
             return noteRepository.save(note);
         }
         return null;
     }
+    
+    public List<Note> getNotesByTag(String tag) {
+        return noteRepository.findByTagsContaining(tag);
+    }
+
     
     public boolean deleteNote(Long id) {
         if (noteRepository.existsById(id)) {

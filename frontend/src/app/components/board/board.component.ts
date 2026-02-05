@@ -13,20 +13,31 @@ import { NoteService } from '../../services/note.service';
     <div class="board-container">
       <header class="board-header">
         <h1>My Notes Board</h1>
-        <button class="add-btn" (click)="addNote()">
-          <span>+</span>
-          Add Note
-        </button>
+        <div class="header-controls">
+          <div class="filter-section">
+            <select [(ngModel)]="selectedTag" (change)="filterByTag()" class="tag-filter">
+              <option value="">All Tags</option>
+              <option *ngFor="let tag of allTags" [value]="tag">{{tag}}</option>
+            </select>
+            <button *ngIf="selectedTag" class="clear-filter-btn" (click)="clearFilter()">×</button>
+          </div>
+          <button class="add-btn" (click)="addNote()">
+            <span>+</span>
+            Add Note
+          </button>
+        </div>
       </header>
+
       
       <div class="board-area" #boardArea>
         <app-note 
-          *ngFor="let note of notes"
+          *ngFor="let note of filteredNotes"
           [note]="note"
           (update)="updateNote($event)"
           (delete)="deleteNote($event)"
           (move)="moveNote($event)">
         </app-note>
+
         
         <div *ngIf="notes.length === 0" class="empty-state">
           <div class="empty-icon">📝</div>
@@ -109,12 +120,63 @@ import { NoteService } from '../../services/note.service';
       font-size: 18px;
       font-weight: 300;
     }
+    
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .filter-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .tag-filter {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      font-size: 14px;
+      color: #374151;
+      cursor: pointer;
+      outline: none;
+    }
+    
+    .tag-filter:focus {
+      border-color: #4f46e5;
+    }
+    
+    .clear-filter-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    
+    .clear-filter-btn:hover {
+      background: #dc2626;
+    }
   `]
 })
+
 export class BoardComponent implements OnInit {
   notes: Note[] = [];
+  filteredNotes: Note[] = [];
+  allTags: string[] = [];
+  selectedTag: string = '';
   
   constructor(private noteService: NoteService) {}
+
   
   ngOnInit() {
     this.loadNotes();
@@ -124,6 +186,8 @@ export class BoardComponent implements OnInit {
     this.noteService.getAllNotes().subscribe({
       next: (notes) => {
         this.notes = notes;
+        this.filteredNotes = notes;
+        this.updateAllTags();
       },
       error: (error) => {
         console.error('Error loading notes:', error);
@@ -131,24 +195,58 @@ export class BoardComponent implements OnInit {
     });
   }
   
+  updateAllTags() {
+    const tagsSet = new Set<string>();
+    this.notes.forEach(note => {
+      if (note.tags) {
+        note.tags.forEach(tag => tagsSet.add(tag));
+      }
+    });
+    this.allTags = Array.from(tagsSet).sort();
+  }
+  
+  filterByTag() {
+    if (this.selectedTag) {
+      this.noteService.getNotesByTag(this.selectedTag).subscribe({
+        next: (notes) => {
+          this.filteredNotes = notes;
+        },
+        error: (error) => {
+          console.error('Error filtering notes:', error);
+        }
+      });
+    } else {
+      this.filteredNotes = this.notes;
+    }
+  }
+  
+  clearFilter() {
+    this.selectedTag = '';
+    this.filteredNotes = this.notes;
+  }
+
+  
   addNote() {
     const newNote: Note = {
       title: '',
       content: '',
       positionX: 50 + (this.notes.length * 30) % 200,
       positionY: 50 + (this.notes.length * 30) % 200,
-      color: '#fef3c7'
+      color: '#fef3c7',
+      tags: []
     };
     
     this.noteService.createNote(newNote).subscribe({
       next: (note) => {
         this.notes.push(note);
+        this.filteredNotes = [...this.notes];
       },
       error: (error) => {
         console.error('Error creating note:', error);
       }
     });
   }
+
   
   updateNote(note: Note) {
     if (note.id) {
@@ -158,6 +256,12 @@ export class BoardComponent implements OnInit {
           if (index !== -1) {
             this.notes[index] = updatedNote;
           }
+          this.updateAllTags();
+          if (this.selectedTag) {
+            this.filterByTag();
+          } else {
+            this.filteredNotes = [...this.notes];
+          }
         },
         error: (error) => {
           console.error('Error updating note:', error);
@@ -165,17 +269,21 @@ export class BoardComponent implements OnInit {
       });
     }
   }
+
   
   deleteNote(id: number) {
     this.noteService.deleteNote(id).subscribe({
       next: () => {
         this.notes = this.notes.filter(note => note.id !== id);
+        this.filteredNotes = this.filteredNotes.filter(note => note.id !== id);
+        this.updateAllTags();
       },
       error: (error) => {
         console.error('Error deleting note:', error);
       }
     });
   }
+
   
   moveNote(event: {id: number, x: number, y: number}) {
     const note = this.notes.find(n => n.id === event.id);

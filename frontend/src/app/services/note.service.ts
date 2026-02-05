@@ -30,4 +30,8 @@ export class NoteService {
   deleteNote(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
+
+  getNotesByTag(tag: string): Observable<Note[]> {
+    return this.http.get<Note[]>(`${this.apiUrl}/filter?tag=${encodeURIComponent(tag)}`);
+  }
 }

@@ -57,4 +57,10 @@ public class NoteController {
         }
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
+    
+    @GetMapping("/filter")
+    public ResponseEntity<List<Note>> getNotesByTag(@RequestParam String tag) {
+        List<Note> notes = noteService.getNotesByTag(tag);
+        return new ResponseEntity<>(notes, HttpStatus.OK);
+    }
 }

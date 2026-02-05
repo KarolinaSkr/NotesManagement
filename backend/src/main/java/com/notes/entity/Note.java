@@ -1,6 +1,9 @@
 package com.notes.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 
 @Entity
 @Table(name = "notes")
@@ -25,13 +28,21 @@ public class Note {
     @Column
     private String color;
     
+    @ElementCollection
+    @CollectionTable(name = "note_tags", joinColumns = @JoinColumn(name = "note_id"))
+    @Column(name = "tag")
+    private List<String> tags;
+    
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
     
     public Note() {
         this.createdAt = LocalDateTime.now();
         this.color = "#fef3c7"; // Default yellow color
+        this.tags = new ArrayList<>();
     }
+
     
     public Note(String title, String content, Double positionX, Double positionY) {
         this();
@@ -96,5 +107,13 @@ public class Note {
     
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+    
+    public List<String> getTags() {
+        return tags;
+    }
+    
+    public void setTags(List<String> tags) {
+        this.tags = tags;
     }
 }

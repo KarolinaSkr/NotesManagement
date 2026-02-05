@@ -6,4 +6,5 @@ export interface Note {
   positionY: number;
   color: string;
   createdAt?: string;
+  tags?: string[];
 }
