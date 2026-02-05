@@ -42,19 +42,3 @@ input:focus,
 textarea:focus {
   outline: none;
 }
-
-/* Animation for new notes */
-@keyframes noteAppear {
-  from {
-    opacity: 0;
-    transform: scale(0.8) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-app-note {
-  animation: noteAppear 0.3s ease-out;
-}
