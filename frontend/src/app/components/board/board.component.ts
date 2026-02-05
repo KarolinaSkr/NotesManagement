@@ -4,12 +4,32 @@ import { FormsModule } from '@angular/forms';
 import { NoteComponent } from '../note/note.component';
 import { Note } from '../../models/note.model';
 import { NoteService } from '../../services/note.service';
+import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
+
 
 @Component({
   selector: 'app-board',
   standalone: true,
   imports: [CommonModule, FormsModule, NoteComponent],
+  animations: [
+    trigger('noteList', [
+      transition('* => *', [
+        query(':enter', [
+          style({ opacity: 0, transform: 'scale(0.8) translateY(-20px)' }),
+          stagger(100, [
+            animate('300ms cubic-bezier(0.4, 0, 0.2, 1)', 
+              style({ opacity: 1, transform: 'scale(1) translateY(0)' }))
+          ])
+        ], { optional: true }),
+        query(':leave', [
+          animate('200ms cubic-bezier(0.4, 0, 0.2, 1)', 
+            style({ opacity: 0, transform: 'scale(0.8) translateY(-10px)' }))
+        ], { optional: true })
+      ])
+    ])
+  ],
   template: `
+
     <div class="board-container">
       <header class="board-header">
         <h1>My Notes Board</h1>
@@ -30,20 +50,22 @@ import { NoteService } from '../../services/note.service';
 
       
       <div class="board-area" #boardArea>
-        <app-note 
-          *ngFor="let note of filteredNotes"
-          [note]="note"
-          (update)="updateNote($event)"
-          (delete)="deleteNote($event)"
-          (move)="moveNote($event)">
-        </app-note>
-
+        <div [@noteList]="filteredNotes.length" class="notes-container">
+          <app-note 
+            *ngFor="let note of filteredNotes; trackBy: trackByNoteId"
+            [note]="note"
+            (update)="updateNote($event)"
+            (delete)="deleteNote($event)"
+            (move)="moveNote($event)">
+          </app-note>
+        </div>
         
         <div *ngIf="notes.length === 0" class="empty-state">
           <div class="empty-icon">📝</div>
           <p>No notes yet. Click "Add Note" to create your first sticky note!</p>
         </div>
       </div>
+
     </div>
   `,
   styles: [`
@@ -121,6 +143,11 @@ import { NoteService } from '../../services/note.service';
       min-height: calc(100vh - 100px);
       padding: 48px;
     }
+    
+    .notes-container {
+      position: relative;
+    }
+
     
     .empty-state {
       position: absolute;
@@ -330,5 +357,8 @@ export class BoardComponent implements OnInit {
       this.updateNote(note);
     }
   }
-}
 
+  trackByNoteId(index: number, note: Note): number {
+    return note.id || index;
+  }
+}

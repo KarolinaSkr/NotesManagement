@@ -76,7 +76,7 @@ import { Subscription } from 'rxjs';
     .note {
       position: absolute;
       width: 300px;
-      min-height: 250px;
+      min-height: 315px;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       padding: 16px;
