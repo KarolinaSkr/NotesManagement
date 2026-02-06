@@ -19,11 +19,12 @@ public class Note {
     @Column(length = 1000)
     private String content;
     
-    @Column(nullable = false)
+    @Column(name = "position_x", nullable = false)
     private Double positionX;
     
-    @Column(nullable = false)
+    @Column(name = "position_y", nullable = false)
     private Double positionY;
+
     
     @Column
     private String color;
@@ -33,8 +34,14 @@ public class Note {
     @Column(name = "tag")
     private List<String> tags;
     
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
 
     
     public Note() {
@@ -115,5 +122,13 @@ public class Note {
     
     public void setTags(List<String> tags) {
         this.tags = tags;
+    }
+    
+    public User getUser() {
+        return user;
+    }
+    
+    public void setUser(User user) {
+        this.user = user;
     }
 }

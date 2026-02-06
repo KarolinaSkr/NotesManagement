@@ -1,5 +1,0 @@
-com\notes\controller\NoteController.class
-com\notes\service\NoteService.class
-com\notes\entity\Note.class
-com\notes\NotesManagementApplication.class
-com\notes\repository\NoteRepository.class
