@@ -45,8 +45,8 @@ ON CONFLICT DO NOTHING;
 INSERT INTO notes (title, content, position_x, position_y, color, created_at, user_id)
 SELECT 
     'Getting Started',
-    '1. Create new notes by clicking the + button\n2. Drag notes to organize\n3. Use tags to categorize\n4. Switch themes with the moon/sun button',
-    400.0,
+    E'1. Create new notes by clicking the + button\n2. Drag notes to organize\n3. Use tags to categorize\n4. Switch themes with the moon/sun button',
+    450.0,
     150.0,
     '#dbeafe',
     CURRENT_TIMESTAMP,
@@ -57,10 +57,10 @@ ON CONFLICT DO NOTHING;
 INSERT INTO notes (title, content, position_x, position_y, color, created_at, user_id)
 SELECT 
     'Security Features',
-    'This app uses:\n• JWT authentication\n• BCrypt password hashing\n• PostgreSQL database\n• Spring Security',
-    250.0,
-    400.0,
-    '#dcfce7',
+    E'This app uses:\n• JWT authentication\n• BCrypt password hashing\n• PostgreSQL database\n• Spring Security',
+    800.0,
+    50.0,
+    '#d1fae5',
     CURRENT_TIMESTAMP,
     id
 FROM users WHERE email = 'demo@example.com'

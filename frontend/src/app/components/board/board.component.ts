@@ -1,10 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { Observable } from 'rxjs';
 import { NoteComponent } from '../note/note.component';
 import { Note } from '../../models/note.model';
 import { NoteService } from '../../services/note.service';
+import { AuthService } from '../../services/auth.service';
+import { ThemeService } from '../../services/theme.service';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
+
 
 
 @Component({
@@ -56,9 +61,21 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
             <span>+</span>
             Add Note
           </button>
+          
+          <div class="user-actions" *ngIf="isAuthenticated$ | async">
+            <span class="user-email">{{ currentUser?.email }}</span>
+            <button class="logout-button" (click)="logout()" title="Logout">
+              Logout
+              <svg class="logout-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+              </svg>
+            </button>
+
+          </div>
         </div>
       </header>
-
       
       <div class="board-area" #boardArea>
         <div [@noteList]="filteredNotes.length" class="notes-container">
@@ -296,8 +313,60 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
     .clear-filter-btn:hover {
       background: #dc2626;
     }
+
+    .user-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 8px 16px;
+      border-radius: 22px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    :host-context(.dark-mode) .user-actions {
+      background: rgba(55, 65, 81, 0.9);
+    }
+
+    .user-email {
+      font-size: 14px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    :host-context(.dark-mode) .user-email {
+      color: #e5e7eb;
+    }
+
+    .logout-button {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 16px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+    }
+
+    .logout-button:hover {
+
+      background: #dc2626;
+      transform: translateY(-1px);
+    }
+
+    .logout-icon {
+      width: 16px;
+      height: 16px;
+      margin-left: 6px;
+    }
   `]
+
 })
+
 
 export class BoardComponent implements OnInit {
   notes: Note[] = [];
@@ -305,8 +374,20 @@ export class BoardComponent implements OnInit {
   allTags: string[] = [];
   selectedTag: string = '';
   searchQuery: string = '';
+  isAuthenticated$: Observable<boolean>;
+  currentUser: { email: string } | null = null;
   
-  constructor(private noteService: NoteService) {}
+  constructor(
+    private noteService: NoteService,
+    private authService: AuthService,
+    private router: Router
+  ) {
+    this.isAuthenticated$ = this.authService.isAuthenticated$;
+    this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user;
+    });
+  }
+
 
 
   
@@ -445,5 +526,16 @@ export class BoardComponent implements OnInit {
 
   trackByNoteId(index: number, note: Note): number {
     return note.id || index;
+  }
+
+  logout(): void {
+    this.authService.logout().subscribe({
+      next: () => {
+        this.router.navigate(['/login']);
+      },
+      error: () => {
+        this.router.navigate(['/login']);
+      }
+    });
   }
 }

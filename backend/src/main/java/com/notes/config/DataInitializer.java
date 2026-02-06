@@ -36,7 +36,6 @@ public class DataInitializer implements CommandLineRunner {
                     System.out.println("Demo user created: demo@example.com / password123");
                     return saved;
                 });
-        }
     }
 
 }

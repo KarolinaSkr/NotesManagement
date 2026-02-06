@@ -3,14 +3,16 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { ThemeService } from '../../services/theme.service';
 import { LoginRequest } from '../../models/user.model';
+
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   template: `
-    <div class="login-container">
+    <div class="login-container" [class.dark-mode]="themeService.isDarkMode()">
       <div class="login-card">
         <div class="login-header">
           <h1>📝 Notes Management</h1>
@@ -86,7 +88,13 @@ import { LoginRequest } from '../../models/user.model';
       justify-content: center;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       padding: 20px;
+      transition: background 0.3s ease;
     }
+
+    .login-container.dark-mode {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+
     
     .login-card {
       background: white;
@@ -95,7 +103,14 @@ import { LoginRequest } from '../../models/user.model';
       width: 100%;
       max-width: 400px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
     }
+
+    .dark-mode .login-card {
+      background: #2d2d44;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
     
     .login-header {
       text-align: center;
@@ -106,13 +121,64 @@ import { LoginRequest } from '../../models/user.model';
       margin: 0 0 10px 0;
       color: #333;
       font-size: 28px;
+      transition: color 0.3s ease;
+    }
+
+    .dark-mode .login-header h1 {
+      color: #f0f0f0;
     }
     
     .login-header p {
       margin: 0;
       color: #666;
       font-size: 16px;
+      transition: color 0.3s ease;
     }
+
+    .dark-mode .login-header p {
+      color: #aaa;
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 20px;
+      background: transparent;
+      border: 2px solid #e1e5e9;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #666;
+      transition: all 0.3s ease;
+    }
+
+    .theme-toggle:hover {
+      border-color: #667eea;
+      color: #667eea;
+    }
+
+    .dark-mode .theme-toggle {
+      border-color: #4a4a6a;
+      color: #aaa;
+    }
+
+    .dark-mode .theme-toggle:hover {
+      border-color: #888;
+      color: #f0f0f0;
+    }
+
+    .theme-icon {
+      font-size: 16px;
+    }
+
+    .theme-text {
+      font-weight: 500;
+    }
+
     
     .login-form {
       display: flex;
@@ -130,24 +196,43 @@ import { LoginRequest } from '../../models/user.model';
       font-weight: 500;
       color: #333;
       font-size: 14px;
+      transition: color 0.3s ease;
     }
+
+    .dark-mode .form-group label {
+      color: #ddd;
+    }
+
     
     .form-group input {
       padding: 12px 16px;
       border: 2px solid #e1e5e9;
       border-radius: 8px;
       font-size: 16px;
-      transition: border-color 0.3s ease;
+      transition: border-color 0.3s ease, background 0.3s ease, color 0.3s ease;
+      background: white;
+      color: #333;
+    }
+
+    .dark-mode .form-group input {
+      background: #3a3a55;
+      border-color: #4a4a6a;
+      color: #f0f0f0;
     }
     
     .form-group input:focus {
       outline: none;
       border-color: #667eea;
     }
+
+    .dark-mode .form-group input:focus {
+      border-color: #888;
+    }
     
     .form-group input.error {
       border-color: #e74c3c;
     }
+
     
     .error-message {
       color: #e74c3c;
@@ -199,13 +284,28 @@ import { LoginRequest } from '../../models/user.model';
       font-size: 14px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      transition: color 0.3s ease;
+    }
+
+    .dark-mode .demo-info h3 {
+      color: #ddd;
     }
     
     .demo-info p {
       margin: 4px 0;
       color: #666;
       font-size: 13px;
+      transition: color 0.3s ease;
     }
+
+    .dark-mode .demo-info p {
+      color: #aaa;
+    }
+
+    .dark-mode .demo-info {
+      border-top-color: #4a4a6a;
+    }
+
   `]
 })
 export class LoginComponent {
@@ -219,8 +319,10 @@ export class LoginComponent {
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    public themeService: ThemeService
   ) {}
+
 
   onSubmit(): void {
     if (this.isLoading) return;
