@@ -50,8 +50,11 @@ public class NoteService {
             note.setContent(noteDetails.getContent());
             note.setPositionX(noteDetails.getPositionX());
             note.setPositionY(noteDetails.getPositionY());
+            note.setWidth(noteDetails.getWidth());
+            note.setHeight(noteDetails.getHeight());
             note.setColor(noteDetails.getColor());
             note.setTags(noteDetails.getTags());
+
             return noteRepository.save(note);
         }
         return null;

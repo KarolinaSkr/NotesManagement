@@ -84,8 +84,10 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
             [note]="note"
             (update)="updateNote($event)"
             (delete)="deleteNote($event)"
-            (move)="moveNote($event)">
+            (move)="moveNote($event)"
+            (resize)="resizeNote($event)">
           </app-note>
+
         </div>
         
         <div *ngIf="notes.length === 0" class="empty-state">
@@ -523,6 +525,16 @@ export class BoardComponent implements OnInit {
       this.updateNote(note);
     }
   }
+
+  resizeNote(event: {id: number, width: number, height: number}) {
+    const note = this.notes.find(n => n.id === event.id);
+    if (note) {
+      note.width = event.width;
+      note.height = event.height;
+      this.updateNote(note);
+    }
+  }
+
 
   trackByNoteId(index: number, note: Note): number {
     return note.id || index;

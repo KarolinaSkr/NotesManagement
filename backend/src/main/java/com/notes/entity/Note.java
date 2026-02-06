@@ -24,10 +24,17 @@ public class Note {
     
     @Column(name = "position_y", nullable = false)
     private Double positionY;
+    
+    @Column(name = "width")
+    private Double width;
+    
+    @Column(name = "height")
+    private Double height;
 
     
     @Column
     private String color;
+
     
     @ElementCollection
     @CollectionTable(name = "note_tags", joinColumns = @JoinColumn(name = "note_id"))
@@ -100,7 +107,24 @@ public class Note {
         this.positionY = positionY;
     }
     
+    public Double getWidth() {
+        return width;
+    }
+    
+    public void setWidth(Double width) {
+        this.width = width;
+    }
+    
+    public Double getHeight() {
+        return height;
+    }
+    
+    public void setHeight(Double height) {
+        this.height = height;
+    }
+    
     public String getColor() {
+
         return color;
     }
     

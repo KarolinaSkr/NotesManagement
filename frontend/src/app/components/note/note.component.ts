@@ -15,8 +15,11 @@ import { Subscription } from 'rxjs';
       [style.backgroundColor]="note.color"
       [style.left.px]="note.positionX"
       [style.top.px]="note.positionY"
+      [style.width.px]="note.width || 300"
+      [style.height.px]="note.height || 300"
       (mousedown)="startDrag($event)"
       #noteElement>
+
       
       <div class="tags-display top-tags-display" *ngIf="note.tags && note.tags.length > 0">
         <span 
@@ -79,15 +82,17 @@ import { Subscription } from 'rxjs';
           {{formatDate(note.createdAt)}}
         </div>
       </div>
+      <div class="resize-handle" (mousedown)="startResize($event)" title="Resize"></div>
     </div>
-
 
   `,
   styles: [`
     .note {
       position: absolute;
-      width: 300px;
-      min-height: 300px;
+      min-width: 220px;
+      min-height: 360px;
+      max-width: 500px;
+      max-height: 600px;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       padding: 16px;
@@ -205,7 +210,7 @@ import { Subscription } from 'rxjs';
     }
     
     .note-content {
-      flex: 0 0 auto;
+      flex: 1;
       border: none;
       background: transparent;
       resize: none;
@@ -213,9 +218,10 @@ import { Subscription } from 'rxjs';
       line-height: 1.5;
       color: #4b5563;
       outline: none;
-      height: 190px;
+      min-height: 190px;
       transition: color 0.3s ease;
     }
+
     
     .note-content::placeholder {
       color: #9ca3af;
@@ -381,7 +387,30 @@ import { Subscription } from 'rxjs';
     :host-context(.dark-mode) .note-date {
       color: #9aa0aa;
     }
+
+    .resize-handle {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      width: 16px;
+      height: 16px;
+      cursor: nwse-resize;
+      background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.3) 50%);
+      border-radius: 0 0 4px 0;
+      opacity: 0.6;
+      transition: opacity 0.2s ease;
+    }
+
+    .resize-handle:hover {
+      opacity: 1;
+    }
+
+    .note.resizing {
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+    }
   `]
+
 })
 export class NoteComponent implements OnInit, OnDestroy {
 
@@ -389,6 +418,8 @@ export class NoteComponent implements OnInit, OnDestroy {
   @Output() update = new EventEmitter<Note>();
   @Output() delete = new EventEmitter<number>();
   @Output() move = new EventEmitter<{id: number, x: number, y: number}>();
+  @Output() resize = new EventEmitter<{id: number, width: number, height: number}>();
+
   
   @ViewChild('noteElement') noteElement!: ElementRef;
   
@@ -402,11 +433,15 @@ export class NoteComponent implements OnInit, OnDestroy {
   newTag = '';
   
   private isDragging = false;
+  private isResizing = false;
   private themeSubscription: Subscription | null = null;
   private startX = 0;
   private startY = 0;
   private initialLeft = 0;
   private initialTop = 0;
+  private initialWidth = 0;
+  private initialHeight = 0;
+
 
   constructor(private themeService: ThemeService) {}
 
@@ -461,8 +496,9 @@ export class NoteComponent implements OnInit, OnDestroy {
     const deltaX = event.clientX - this.startX;
     const deltaY = event.clientY - this.startY;
     
-    const noteWidth = 300;
-    const noteHeight = this.noteElement.nativeElement.getBoundingClientRect().height;
+    const noteWidth = this.note.width || 300;
+    const noteHeight = this.note.height || 300;
+
     
     // Get the board container for proper boundary constraints
     const boardArea = this.noteElement.nativeElement.closest('.board-area');
@@ -505,6 +541,54 @@ export class NoteComponent implements OnInit, OnDestroy {
       document.removeEventListener('mouseup', this.stopDrag);
     }
   }
+
+  startResize(event: MouseEvent) {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    this.isResizing = true;
+    this.startX = event.clientX;
+    this.startY = event.clientY;
+    this.initialWidth = this.note.width || 300;
+    this.initialHeight = this.note.height || 300;
+    
+    this.noteElement.nativeElement.classList.add('resizing');
+    
+    document.addEventListener('mousemove', this.onResize);
+    document.addEventListener('mouseup', this.stopResize);
+  }
+
+  onResize = (event: MouseEvent) => {
+    if (!this.isResizing) return;
+    
+    const deltaX = event.clientX - this.startX;
+    const deltaY = event.clientY - this.startY;
+    
+    const newWidth = Math.max(200, this.initialWidth + deltaX);
+    const newHeight = Math.max(200, this.initialHeight + deltaY);
+    
+    this.note.width = newWidth;
+    this.note.height = newHeight;
+  }
+
+  stopResize = () => {
+    if (this.isResizing) {
+      this.isResizing = false;
+      this.noteElement.nativeElement.classList.remove('resizing');
+      
+      if (this.note.id) {
+        this.resize.emit({
+          id: this.note.id,
+          width: this.note.width || 300,
+          height: this.note.height || 300
+        });
+      }
+      
+      document.removeEventListener('mousemove', this.onResize);
+      document.removeEventListener('mouseup', this.stopResize);
+    }
+  }
+
 
   onUpdate() {
     this.update.emit(this.note);
