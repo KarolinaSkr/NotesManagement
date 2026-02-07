@@ -47,15 +47,14 @@ import { LoginRequest } from '../../models/user.model';
               name="password"
               [(ngModel)]="credentials.password"
               required
-              minlength="6"
               #passwordInput="ngModel"
               placeholder="Enter your password"
               [class.error]="passwordInput.invalid && passwordInput.touched"
             />
             <div class="error-message" *ngIf="passwordInput.invalid && passwordInput.touched">
               <span *ngIf="passwordInput.errors?.['required']">Password is required</span>
-              <span *ngIf="passwordInput.errors?.['minlength']">Password must be at least 6 characters</span>
             </div>
+
           </div>
           
           <div class="error-alert" *ngIf="errorMessage">
@@ -92,7 +91,7 @@ import { LoginRequest } from '../../models/user.model';
     }
 
     .login-container.dark-mode {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
     }
 
     
@@ -260,16 +259,29 @@ import { LoginRequest } from '../../models/user.model';
       cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
+
+    .login-button.dark-mode {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    }
     
     .login-button:hover:not(:disabled) {
       transform: translateY(-2px);
       box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
     }
     
+    .dark-mode .login-button {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    }
+    
+    .dark-mode .login-button:hover:not(:disabled) {
+      box-shadow: 0 8px 20px rgba(30, 27, 75, 0.4);
+    }
+    
     .login-button:disabled {
       opacity: 0.6;
       cursor: not-allowed;
     }
+
     
     .demo-info {
       margin-top: 30px;

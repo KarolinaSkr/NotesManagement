@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Note } from '../../models/note.model';
 import { ThemeService } from '../../services/theme.service';
+import { ReminderService } from '../../services/reminder.service';
 import { Subscription } from 'rxjs';
+
 
 @Component({
   selector: 'app-note',
@@ -12,6 +14,7 @@ import { Subscription } from 'rxjs';
   template: `
     <div 
       class="note"
+      [class.reminder-triggered]="isReminderTriggered"
       [style.backgroundColor]="note.color"
       [style.left.px]="note.positionX"
       [style.top.px]="note.positionY"
@@ -22,6 +25,7 @@ import { Subscription } from 'rxjs';
 
       
       <div class="tags-display top-tags-display" *ngIf="note.tags && note.tags.length > 0">
+
         <span 
           *ngFor="let tag of note.tags; let i = index" 
           class="tag-badge"
@@ -38,7 +42,19 @@ import { Subscription } from 'rxjs';
           (blur)="onUpdate()"
           placeholder="Title"
           class="note-title">
+        <button 
+          class="reminder-btn" 
+          [class.active]="hasReminder"
+          [class.triggered]="isReminderTriggered"
+          (click)="toggleReminder()" 
+          [title]="hasReminder ? 'Remove reminder' : 'Set reminder'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+        </button>
         <button class="pdf-btn" (click)="exportToPdf()" title="Export to PDF">
+
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
@@ -85,7 +101,28 @@ import { Subscription } from 'rxjs';
       <div class="resize-handle" (mousedown)="startResize($event)" title="Resize"></div>
     </div>
 
+    <!-- Reminder Modal -->
+    <div class="reminder-modal-overlay" *ngIf="showReminderModal" (click)="closeReminderModal()">
+      <div class="reminder-modal" (click)="$event.stopPropagation()">
+        <h3>Set Reminder</h3>
+        <p class="reminder-note-title">{{note.title || 'Untitled Note'}}</p>
+        <div class="reminder-input-group">
+          <label for="reminder-date">Date and Time:</label>
+          <input 
+            type="datetime-local" 
+            id="reminder-date"
+            [(ngModel)]="reminderDateTime"
+            [min]="minDateTime"
+            class="reminder-datetime-input">
+        </div>
+        <div class="reminder-modal-actions">
+          <button class="reminder-cancel-btn" (click)="closeReminderModal()">Cancel</button>
+          <button class="reminder-save-btn" (click)="saveReminder()" [disabled]="!reminderDateTime">Set Reminder</button>
+        </div>
+      </div>
+    </div>
   `,
+
   styles: [`
     .note {
       position: absolute;
@@ -175,7 +212,7 @@ import { Subscription } from 'rxjs';
       border-radius: 4px;
       transition: all 0.2s ease;
       flex-shrink: 0;
-      margin-left: 8px;
+      margin-left: 4px;
       padding: 0;
       color: #6b7280;
     }
@@ -409,7 +446,235 @@ import { Subscription } from 'rxjs';
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
       z-index: 1000;
     }
+
+    .reminder-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      margin-left: 8px;
+      padding: 0;
+      color: #6b7280;
+    }
+
+    .reminder-btn:hover {
+      background-color: rgba(0, 0, 0, 0.1);
+      color: #4f46e5;
+      transform: scale(1.1);
+    }
+
+    .reminder-btn.active {
+      background-color: #ef4444;
+      color: white;
+    }
+
+    .reminder-btn.active:hover {
+      background-color: #dc2626;
+    }
+
+    .reminder-btn.triggered {
+      animation: bellShake 0.5s ease-in-out infinite;
+    }
+
+    @keyframes bellShake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+
+    :host-context(.dark-mode) .reminder-btn {
+      color: #9ca3af;
+    }
+
+    :host-context(.dark-mode) .reminder-btn:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #818cf8;
+    }
+
+    :host-context(.dark-mode) .reminder-btn.active {
+      background-color: #ef4444;
+      color: white;
+    }
+
+    /* Reminder triggered border - static red, outside note without affecting content */
+    .note.reminder-triggered {
+      outline: 3px solid #ef4444;
+      outline-offset: 3px;
+    }
+
+    /* Reminder Modal Styles */
+    .reminder-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      backdrop-filter: blur(4px);
+    }
+
+    .reminder-modal {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      min-width: 320px;
+      max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: modalAppear 0.3s ease;
+    }
+
+    @keyframes modalAppear {
+      from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    :host-context(.dark-mode) .reminder-modal {
+      background: #1f2937;
+      color: #f9fafb;
+    }
+
+    .reminder-modal h3 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    :host-context(.dark-mode) .reminder-modal h3 {
+      color: #f9fafb;
+    }
+
+    .reminder-note-title {
+      margin: 0 0 20px 0;
+      font-size: 14px;
+      color: #6b7280;
+      font-style: italic;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    :host-context(.dark-mode) .reminder-note-title {
+      color: #9ca3af;
+    }
+
+    .reminder-input-group {
+      margin-bottom: 20px;
+    }
+
+    .reminder-input-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+    }
+
+    :host-context(.dark-mode) .reminder-input-group label {
+      color: #d1d5db;
+    }
+
+    .reminder-datetime-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #374151;
+      background: white;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .reminder-datetime-input:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    :host-context(.dark-mode) .reminder-datetime-input {
+      background: #374151;
+      border-color: #4b5563;
+      color: #f9fafb;
+    }
+
+    :host-context(.dark-mode) .reminder-datetime-input:focus {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.1);
+    }
+
+    .reminder-modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .reminder-cancel-btn {
+      padding: 10px 16px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      color: #6b7280;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .reminder-cancel-btn:hover {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+    }
+
+    :host-context(.dark-mode) .reminder-cancel-btn {
+      background: #374151;
+      border-color: #4b5563;
+      color: #d1d5db;
+    }
+
+    :host-context(.dark-mode) .reminder-cancel-btn:hover {
+      background: #4b5563;
+    }
+
+    .reminder-save-btn {
+      padding: 10px 16px;
+      border: none;
+      background: #4f46e5;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .reminder-save-btn:hover:not(:disabled) {
+      background: #4338ca;
+      transform: translateY(-1px);
+    }
+
+    .reminder-save-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
   `]
+
 
 })
 export class NoteComponent implements OnInit, OnDestroy {
@@ -431,10 +696,16 @@ export class NoteComponent implements OnInit, OnDestroy {
   }
 
   newTag = '';
+  showReminderModal = false;
+  reminderDateTime: string = '';
+  minDateTime: string = '';
+  hasReminder = false;
+  isReminderTriggered = false;
   
   private isDragging = false;
   private isResizing = false;
   private themeSubscription: Subscription | null = null;
+  private reminderSubscription: Subscription | null = null;
   private startX = 0;
   private startY = 0;
   private initialLeft = 0;
@@ -443,19 +714,35 @@ export class NoteComponent implements OnInit, OnDestroy {
   private initialHeight = 0;
 
 
-  constructor(private themeService: ThemeService) {}
+  constructor(private themeService: ThemeService, private reminderService: ReminderService) {}
+
 
   ngOnInit() {
     this.themeSubscription = this.themeService.isDarkMode$.subscribe((isDark: boolean) => {
       this.updateNoteColorForTheme(isDark);
     });
+    this.loadReminderState();
+    
+    // Subscribe to reminder triggered events to show effect immediately
+    this.reminderSubscription = this.reminderService.reminderTriggered$.subscribe((noteId: number) => {
+      if (noteId === this.note.id) {
+        console.log('Reminder triggered event received for note:', noteId);
+        this.isReminderTriggered = true;
+        this.note.reminderTriggered = true;
+      }
+    });
   }
+
 
   ngOnDestroy() {
     if (this.themeSubscription) {
       this.themeSubscription.unsubscribe();
     }
+    if (this.reminderSubscription) {
+      this.reminderSubscription.unsubscribe();
+    }
   }
+
 
   private updateNoteColorForTheme(isDark: boolean) {
     const currentColor = this.note.color;
@@ -637,9 +924,92 @@ export class NoteComponent implements OnInit, OnDestroy {
     });
   }
 
-  exportToPdf() {
+  toggleReminder(): void {
+    if (this.hasReminder) {
+      // Remove reminder
+      if (this.note.id) {
+        this.reminderService.removeReminder(this.note.id);
+      }
+      this.note.reminderAt = null;
+      this.note.reminderTriggered = false;
+      this.hasReminder = false;
+      this.isReminderTriggered = false;
+      this.onUpdate();
+    } else {
+      // Open modal to set reminder
+      this.openReminderModal();
+    }
+  }
 
+  openReminderModal(): void {
+    // Set minimum datetime to current time
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    this.minDateTime = now.toISOString().slice(0, 16);
+    
+    // Default to 1 hour from now
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+    this.reminderDateTime = oneHourLater.toISOString().slice(0, 16);
+    
+    this.showReminderModal = true;
+  }
+
+  closeReminderModal(): void {
+    this.showReminderModal = false;
+    this.reminderDateTime = '';
+  }
+
+  saveReminder(): void {
+    if (this.reminderDateTime && this.note.id) {
+      const reminderDate = new Date(this.reminderDateTime);
+      console.log('Saving reminder from note component:', reminderDate.toISOString());
+      this.reminderService.setReminder(this.note.id, reminderDate);
+      this.note.reminderAt = reminderDate;
+      this.note.reminderTriggered = false;
+      this.hasReminder = true;
+      this.isReminderTriggered = false;
+      this.onUpdate();
+      this.closeReminderModal();
+      
+      // Force immediate check
+      setTimeout(() => {
+        console.log('Triggering immediate reminder check...');
+        this.reminderService.checkReminders();
+      }, 500);
+    }
+  }
+
+  /**
+   * Test notification - can be called from console for debugging
+   */
+  testNotification(): void {
+    console.log('Testing notification...');
+    if (this.note.id) {
+      // Set reminder to 1 second from now
+      const testDate = new Date(Date.now() + 1000);
+      this.reminderService.setReminder(this.note.id, testDate);
+      this.hasReminder = true;
+      this.note.reminderAt = testDate;
+      console.log('Test reminder set for 1 second from now');
+    }
+  }
+
+
+  private loadReminderState(): void {
+    if (this.note.id) {
+      const reminderState = this.reminderService.getReminderForNote(this.note.id);
+      this.hasReminder = reminderState.reminderAt !== null;
+      this.isReminderTriggered = reminderState.reminderTriggered;
+      
+      // Sync with note object
+      this.note.reminderAt = reminderState.reminderAt;
+      this.note.reminderTriggered = reminderState.reminderTriggered;
+    }
+  }
+
+  exportToPdf() {
     const title = this.note.title || 'Untitled Note';
+
     const content = this.note.content || '';
     const date = this.note.createdAt ? new Date(this.note.createdAt).toLocaleString() : '';
     

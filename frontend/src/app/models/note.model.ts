@@ -9,4 +9,6 @@ export interface Note {
   color: string;
   createdAt?: string;
   tags?: string[];
+  reminderAt?: Date | null;
+  reminderTriggered?: boolean;
 }

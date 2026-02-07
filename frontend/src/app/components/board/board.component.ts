@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -8,7 +8,9 @@ import { Note } from '../../models/note.model';
 import { NoteService } from '../../services/note.service';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
+import { ReminderService } from '../../services/reminder.service';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
+
 
 
 
@@ -370,7 +372,7 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
 })
 
 
-export class BoardComponent implements OnInit {
+export class BoardComponent implements OnInit, OnDestroy {
   notes: Note[] = [];
   filteredNotes: Note[] = [];
   allTags: string[] = [];
@@ -382,7 +384,8 @@ export class BoardComponent implements OnInit {
   constructor(
     private noteService: NoteService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private reminderService: ReminderService
   ) {
     this.isAuthenticated$ = this.authService.isAuthenticated$;
     this.authService.currentUser$.subscribe(user => {
@@ -392,9 +395,16 @@ export class BoardComponent implements OnInit {
 
 
 
+
   
   ngOnInit() {
     this.loadNotes();
+    // Request notification permission on app startup
+    this.reminderService.requestNotificationPermission();
+  }
+
+  ngOnDestroy() {
+    this.reminderService.stopReminderCheck();
   }
   
   loadNotes() {
@@ -403,12 +413,19 @@ export class BoardComponent implements OnInit {
         this.notes = notes;
         this.filteredNotes = notes;
         this.updateAllTags();
+        // Save notes to localStorage for reminder service
+        this.saveNotesToLocalStorage();
       },
       error: (error) => {
         console.error('Error loading notes:', error);
       }
     });
   }
+
+  private saveNotesToLocalStorage(): void {
+    localStorage.setItem('notes', JSON.stringify(this.notes));
+  }
+
   
   updateAllTags() {
     const tagsSet = new Set<string>();
@@ -493,6 +510,8 @@ export class BoardComponent implements OnInit {
           }
           this.updateAllTags();
           this.applyFilters();
+          // Update localStorage after note update
+          this.saveNotesToLocalStorage();
 
         },
         error: (error) => {
@@ -502,6 +521,7 @@ export class BoardComponent implements OnInit {
     }
   }
 
+
   
   deleteNote(id: number) {
     this.noteService.deleteNote(id).subscribe({
@@ -509,12 +529,17 @@ export class BoardComponent implements OnInit {
         this.notes = this.notes.filter(note => note.id !== id);
         this.filteredNotes = this.filteredNotes.filter(note => note.id !== id);
         this.updateAllTags();
+        // Update localStorage after note deletion
+        this.saveNotesToLocalStorage();
+        // Remove any reminder for this note
+        this.reminderService.removeReminder(id);
       },
       error: (error) => {
         console.error('Error deleting note:', error);
       }
     });
   }
+
 
   
   moveNote(event: {id: number, x: number, y: number}) {

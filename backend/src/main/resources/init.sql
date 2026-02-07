@@ -42,8 +42,8 @@ SELECT
     'This is a demo note. You can drag me around, edit me, or delete me. Try it out!',
     100.0,
     100.0,
-    350.0,
-    300.0,
+    360.0,
+    250.0,
     '#fef3c7',
     CURRENT_TIMESTAMP,
     id

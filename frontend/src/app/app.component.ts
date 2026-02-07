@@ -29,7 +29,7 @@ import { ThemeService } from './services/theme.service';
     
     .header-actions {
       position: fixed;
-      top: 20px;
+      top: 25px;
       left: 20px;
       right: 20px;
       z-index: 10000;
