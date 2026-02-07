@@ -16,36 +16,16 @@ export class ReminderService {
     this.loadRemindersFromStorage();
     this.startReminderCheck();
   }
-
-
-  /**
-   * Request permission for browser notifications
-   * Now only logs, doesn't request browser notifications
-   */
-  requestNotificationPermission(): void {
-    console.log('Notification permission check - alerts will be shown instead');
-  }
-
-  /**
-   * Check if notification permission is granted
-   * Always returns true since we use alerts now
-   */
-  hasNotificationPermission(): boolean {
-    return true;
-  }
-
-
   /**
    * Start the global timer to check for due reminders
    */
   private startReminderCheck(): void {
-    console.log('Starting reminder check service...');
-    // Check every 10 seconds for more responsive notifications
+    // Check every 10 seconds for responsive notifications
     this.checkInterval = setInterval(() => {
       this.checkReminders();
     }, 10000);
 
-    // Initial check after a short delay to ensure everything is loaded
+    // Initial check after a short delay
     setTimeout(() => this.checkReminders(), 2000);
   }
 
@@ -60,27 +40,16 @@ export class ReminderService {
 
   /**
    * Check all notes for due reminders and show notifications
-   * Public method so it can be called manually for testing
    */
-  checkReminders(): void {
-    console.log('Checking reminders...');
-
+  private checkReminders(): void {
     const notes = this.getAllNotesWithReminders();
     const now = new Date();
-    
-    console.log(`Checking ${notes.length} notes at ${now.toISOString()}`);
 
     notes.forEach(note => {
-      console.log(`Note ${note.id}: reminderAt=${note.reminderAt}, triggered=${note.reminderTriggered}`);
-      
       if (note.reminderAt && !note.reminderTriggered) {
         const reminderDate = new Date(note.reminderAt);
-        const timeDiff = reminderDate.getTime() - now.getTime();
-        
-        console.log(`Note ${note.id}: reminderDate=${reminderDate.toISOString()}, timeDiff=${timeDiff}ms`);
         
         if (reminderDate <= now) {
-          console.log(`Reminder due for note ${note.id}! Showing styled alert...`);
           this.showStyledAlert(note);
           this.markReminderAsTriggered(note.id!);
         }
@@ -92,8 +61,6 @@ export class ReminderService {
    * Show styled alert for a note reminder
    */
   private showStyledAlert(note: Note): void {
-    console.log('Showing styled alert for note:', note.id);
-    
     // Create styled alert overlay
     const overlay = document.createElement('div');
     overlay.id = 'reminder-alert-overlay';
@@ -200,14 +167,7 @@ export class ReminderService {
         }, 200);
       }
     });
-    
-    console.log('Styled alert displayed for note:', note.id);
   }
-
-
-
-
-
 
   /**
    * Mark a reminder as triggered and save to storage
@@ -222,16 +182,13 @@ export class ReminderService {
     this.saveRemindersToStorage(reminders);
     
     // Notify all subscribers that this note's reminder was triggered
-    console.log('Emitting reminder triggered event for note:', noteId);
     this.reminderTriggered$.next(noteId);
   }
-
 
   /**
    * Set a reminder for a note
    */
   setReminder(noteId: number, reminderAt: Date): void {
-    console.log(`Setting reminder for note ${noteId} at ${reminderAt.toISOString()}`);
     const reminders = this.getRemindersFromStorage();
     reminders[noteId] = {
       reminderAt: reminderAt.toISOString(),
@@ -239,12 +196,10 @@ export class ReminderService {
       triggeredAt: null
     };
     this.saveRemindersToStorage(reminders);
-    console.log('Reminder saved to localStorage');
     
     // Immediate check in case reminder is already due
     setTimeout(() => this.checkReminders(), 100);
   }
-
 
   /**
    * Remove a reminder for a note
@@ -286,8 +241,6 @@ export class ReminderService {
     try {
       const notes: Note[] = JSON.parse(notesJson);
       const reminders = this.getRemindersFromStorage();
-      
-      console.log(`Found ${notes.length} notes and ${Object.keys(reminders).length} reminders`);
 
       return notes.map(note => {
         const reminder = reminders[note.id!];
@@ -305,7 +258,6 @@ export class ReminderService {
       return [];
     }
   }
-
 
   /**
    * Load reminders from localStorage
@@ -330,12 +282,7 @@ export class ReminderService {
     if (!localStorage.getItem(this.REMINDER_KEY)) {
       localStorage.setItem(this.REMINDER_KEY, JSON.stringify({}));
     }
-    
-    // Expose service to window for debugging
-    (window as any).reminderService = this;
-    console.log('ReminderService exposed to window.reminderService for debugging');
   }
-
 
   /**
    * Reset reminder triggered state (when user removes a triggered reminder)
@@ -369,25 +316,4 @@ export class ReminderService {
 
     this.saveRemindersToStorage(reminders);
   }
-
-  /**
-   * Test alert system - call from browser console:
-   * window.reminderService.testAlert()
-   */
-  testAlert(): void {
-    console.log('Testing styled alert...');
-    
-    const testNote: Note = {
-      id: 999,
-      title: 'Test Note',
-      content: 'This is a test reminder',
-      positionX: 0,
-      positionY: 0,
-      color: '#fef3c7'
-    };
-    
-    this.showStyledAlert(testNote);
-  }
-
-
 }

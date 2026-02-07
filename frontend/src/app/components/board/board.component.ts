@@ -11,9 +11,6 @@ import { ThemeService } from '../../services/theme.service';
 import { ReminderService } from '../../services/reminder.service';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
 
-
-
-
 @Component({
   selector: 'app-board',
   standalone: true,
@@ -37,7 +34,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
   ],
 
   template: `
-
     <div class="board-container">
       <header class="board-header">
         <h1>My Notes Board</h1>
@@ -74,7 +70,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
                 <line x1="3" y1="12" x2="21" y2="12"></line>
               </svg>
             </button>
-
           </div>
         </div>
       </header>
@@ -89,7 +84,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
             (move)="moveNote($event)"
             (resize)="resizeNote($event)">
           </app-note>
-
         </div>
         
         <div *ngIf="notes.length === 0" class="empty-state">
@@ -97,7 +91,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
           <p>No notes yet. Click "Add Note" to create your first sticky note!</p>
         </div>
       </div>
-
     </div>
   `,
   styles: [`
@@ -112,7 +105,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
       background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
     }
 
-    
     .board-header {
       display: flex;
       justify-content: space-between;
@@ -129,7 +121,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
       box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
     }
 
-    
     .board-header h1 {
       margin: 0;
       margin-left: 60px;
@@ -143,7 +134,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
       color: #f9fafb;
     }
 
-    
     .add-btn {
       display: flex;
       align-items: center;
@@ -267,7 +257,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
     }
     
     .filter-section {
-
       display: flex;
       align-items: center;
       gap: 8px;
@@ -357,7 +346,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
     }
 
     .logout-button:hover {
-
       background: #dc2626;
       transform: translateY(-1px);
     }
@@ -368,10 +356,7 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
       margin-left: 6px;
     }
   `]
-
 })
-
-
 export class BoardComponent implements OnInit, OnDestroy {
   notes: Note[] = [];
   filteredNotes: Note[] = [];
@@ -393,14 +378,8 @@ export class BoardComponent implements OnInit, OnDestroy {
     });
   }
 
-
-
-
-  
   ngOnInit() {
     this.loadNotes();
-    // Request notification permission on app startup
-    this.reminderService.requestNotificationPermission();
   }
 
   ngOnDestroy() {
@@ -426,7 +405,6 @@ export class BoardComponent implements OnInit, OnDestroy {
     localStorage.setItem('notes', JSON.stringify(this.notes));
   }
 
-  
   updateAllTags() {
     const tagsSet = new Set<string>();
     this.notes.forEach(note => {
@@ -441,7 +419,6 @@ export class BoardComponent implements OnInit, OnDestroy {
     this.applyFilters();
   }
 
-  
   clearFilter() {
     this.selectedTag = '';
     this.applyFilters();
@@ -476,8 +453,6 @@ export class BoardComponent implements OnInit, OnDestroy {
     this.filteredNotes = result;
   }
 
-
-  
   addNote() {
     const newNote: Note = {
       title: '',
@@ -499,7 +474,6 @@ export class BoardComponent implements OnInit, OnDestroy {
     });
   }
 
-  
   updateNote(note: Note) {
     if (note.id) {
       this.noteService.updateNote(note.id, note).subscribe({
@@ -512,7 +486,6 @@ export class BoardComponent implements OnInit, OnDestroy {
           this.applyFilters();
           // Update localStorage after note update
           this.saveNotesToLocalStorage();
-
         },
         error: (error) => {
           console.error('Error updating note:', error);
@@ -521,8 +494,6 @@ export class BoardComponent implements OnInit, OnDestroy {
     }
   }
 
-
-  
   deleteNote(id: number) {
     this.noteService.deleteNote(id).subscribe({
       next: () => {
@@ -540,8 +511,6 @@ export class BoardComponent implements OnInit, OnDestroy {
     });
   }
 
-
-  
   moveNote(event: {id: number, x: number, y: number}) {
     const note = this.notes.find(n => n.id === event.id);
     if (note) {
@@ -559,7 +528,6 @@ export class BoardComponent implements OnInit, OnDestroy {
       this.updateNote(note);
     }
   }
-
 
   trackByNoteId(index: number, note: Note): number {
     return note.id || index;

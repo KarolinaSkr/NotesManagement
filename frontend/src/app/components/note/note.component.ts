@@ -6,7 +6,6 @@ import { ThemeService } from '../../services/theme.service';
 import { ReminderService } from '../../services/reminder.service';
 import { Subscription } from 'rxjs';
 
-
 @Component({
   selector: 'app-note',
   standalone: true,
@@ -23,9 +22,7 @@ import { Subscription } from 'rxjs';
       (mousedown)="startDrag($event)"
       #noteElement>
 
-      
       <div class="tags-display top-tags-display" *ngIf="note.tags && note.tags.length > 0">
-
         <span 
           *ngFor="let tag of note.tags; let i = index" 
           class="tag-badge"
@@ -35,7 +32,6 @@ import { Subscription } from 'rxjs';
       </div>
       
       <div class="note-header">
-
         <input 
           type="text" 
           [(ngModel)]="note.title" 
@@ -54,7 +50,6 @@ import { Subscription } from 'rxjs';
           </svg>
         </button>
         <button class="pdf-btn" (click)="exportToPdf()" title="Export to PDF">
-
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
@@ -65,7 +60,6 @@ import { Subscription } from 'rxjs';
       </div>
       
       <textarea 
-
         [(ngModel)]="note.content" 
         (blur)="onUpdate()"
         placeholder="Write your note here..."
@@ -127,7 +121,7 @@ import { Subscription } from 'rxjs';
     .note {
       position: absolute;
       min-width: 220px;
-      min-height: 360px;
+      min-height: 300px;
       max-width: 500px;
       max-height: 600px;
       border-radius: 8px;
@@ -255,10 +249,9 @@ import { Subscription } from 'rxjs';
       line-height: 1.5;
       color: #4b5563;
       outline: none;
-      min-height: 190px;
+      min-height: 130px;
       transition: color 0.3s ease;
     }
-
     
     .note-content::placeholder {
       color: #9ca3af;
@@ -674,17 +667,13 @@ import { Subscription } from 'rxjs';
       cursor: not-allowed;
     }
   `]
-
-
 })
 export class NoteComponent implements OnInit, OnDestroy {
-
   @Input() note!: Note;
   @Output() update = new EventEmitter<Note>();
   @Output() delete = new EventEmitter<number>();
   @Output() move = new EventEmitter<{id: number, x: number, y: number}>();
   @Output() resize = new EventEmitter<{id: number, width: number, height: number}>();
-
   
   @ViewChild('noteElement') noteElement!: ElementRef;
   
@@ -713,9 +702,7 @@ export class NoteComponent implements OnInit, OnDestroy {
   private initialWidth = 0;
   private initialHeight = 0;
 
-
   constructor(private themeService: ThemeService, private reminderService: ReminderService) {}
-
 
   ngOnInit() {
     this.themeSubscription = this.themeService.isDarkMode$.subscribe((isDark: boolean) => {
@@ -726,13 +713,11 @@ export class NoteComponent implements OnInit, OnDestroy {
     // Subscribe to reminder triggered events to show effect immediately
     this.reminderSubscription = this.reminderService.reminderTriggered$.subscribe((noteId: number) => {
       if (noteId === this.note.id) {
-        console.log('Reminder triggered event received for note:', noteId);
         this.isReminderTriggered = true;
         this.note.reminderTriggered = true;
       }
     });
   }
-
 
   ngOnDestroy() {
     if (this.themeSubscription) {
@@ -742,7 +727,6 @@ export class NoteComponent implements OnInit, OnDestroy {
       this.reminderSubscription.unsubscribe();
     }
   }
-
 
   private updateNoteColorForTheme(isDark: boolean) {
     const currentColor = this.note.color;
@@ -785,15 +769,13 @@ export class NoteComponent implements OnInit, OnDestroy {
     
     const noteWidth = this.note.width || 300;
     const noteHeight = this.note.height || 300;
-
-    
+      
     // Get the board container for proper boundary constraints
     const boardArea = this.noteElement.nativeElement.closest('.board-area');
     
     if (boardArea) {
       // Get the actual visible dimensions of the board area
       const boardRect = boardArea.getBoundingClientRect();
-      
       // Constrain to the board area's visible bounds with small safety margin
       // 5px margin ensures note doesn't slightly overflow due to rounding/subpixels
       const maxX = boardRect.width - noteWidth - 10;
@@ -875,7 +857,6 @@ export class NoteComponent implements OnInit, OnDestroy {
       document.removeEventListener('mouseup', this.stopResize);
     }
   }
-
 
   onUpdate() {
     this.update.emit(this.note);
@@ -962,7 +943,6 @@ export class NoteComponent implements OnInit, OnDestroy {
   saveReminder(): void {
     if (this.reminderDateTime && this.note.id) {
       const reminderDate = new Date(this.reminderDateTime);
-      console.log('Saving reminder from note component:', reminderDate.toISOString());
       this.reminderService.setReminder(this.note.id, reminderDate);
       this.note.reminderAt = reminderDate;
       this.note.reminderTriggered = false;
@@ -970,30 +950,8 @@ export class NoteComponent implements OnInit, OnDestroy {
       this.isReminderTriggered = false;
       this.onUpdate();
       this.closeReminderModal();
-      
-      // Force immediate check
-      setTimeout(() => {
-        console.log('Triggering immediate reminder check...');
-        this.reminderService.checkReminders();
-      }, 500);
     }
   }
-
-  /**
-   * Test notification - can be called from console for debugging
-   */
-  testNotification(): void {
-    console.log('Testing notification...');
-    if (this.note.id) {
-      // Set reminder to 1 second from now
-      const testDate = new Date(Date.now() + 1000);
-      this.reminderService.setReminder(this.note.id, testDate);
-      this.hasReminder = true;
-      this.note.reminderAt = testDate;
-      console.log('Test reminder set for 1 second from now');
-    }
-  }
-
 
   private loadReminderState(): void {
     if (this.note.id) {
@@ -1009,7 +967,6 @@ export class NoteComponent implements OnInit, OnDestroy {
 
   exportToPdf() {
     const title = this.note.title || 'Untitled Note';
-
     const content = this.note.content || '';
     const date = this.note.createdAt ? new Date(this.note.createdAt).toLocaleString() : '';
     
@@ -1021,7 +978,7 @@ export class NoteComponent implements OnInit, OnDestroy {
       alert('PDF export is not available. Please try again later.');
       return;
     }
-    
+
     // Build document definition
     const docDefinition: any = {
       content: [],
