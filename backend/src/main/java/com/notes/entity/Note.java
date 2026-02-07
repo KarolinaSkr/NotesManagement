@@ -1,8 +1,14 @@
 package com.notes.entity;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
 
 
 @Entity
@@ -47,11 +53,20 @@ public class Note {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "board_id", nullable = false)
+    @JsonBackReference
+    private Board board;
+
+
 
 
     
     public Note() {
+
         this.createdAt = LocalDateTime.now();
         this.color = "#fef3c7"; // Default yellow color
         this.tags = new ArrayList<>();
@@ -154,5 +169,13 @@ public class Note {
     
     public void setUser(User user) {
         this.user = user;
+    }
+    
+    public Board getBoard() {
+        return board;
+    }
+    
+    public void setBoard(Board board) {
+        this.board = board;
     }
 }

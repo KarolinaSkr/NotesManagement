@@ -9,19 +9,25 @@ import { Note } from '../models/note.model';
 export class NoteService {
   private apiUrl = 'http://localhost:8080/api/notes';
 
+
+
   constructor(private http: HttpClient) { }
 
-  getAllNotes(): Observable<Note[]> {
-    return this.http.get<Note[]>(this.apiUrl);
+  getAllNotes(boardId?: number): Observable<Note[]> {
+    const url = boardId ? `${this.apiUrl}?boardId=${boardId}` : this.apiUrl;
+    return this.http.get<Note[]>(url);
   }
+
 
   getNoteById(id: number): Observable<Note> {
     return this.http.get<Note>(`${this.apiUrl}/${id}`);
   }
 
-  createNote(note: Note): Observable<Note> {
-    return this.http.post<Note>(this.apiUrl, note);
+  createNote(note: Note, boardId: number): Observable<Note> {
+    const noteWithBoardId = { ...note, boardId };
+    return this.http.post<Note>(this.apiUrl, noteWithBoardId);
   }
+
 
   updateNote(id: number, note: Note): Observable<Note> {
     return this.http.put<Note>(`${this.apiUrl}/${id}`, note);

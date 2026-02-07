@@ -1,5 +1,6 @@
 package com.notes.service;
 
+import com.notes.entity.Board;
 import com.notes.entity.Note;
 import com.notes.entity.User;
 import com.notes.repository.NoteRepository;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
 
 
 @Service
@@ -28,6 +30,11 @@ public class NoteService {
     public List<Note> getAllNotesByUser(User user) {
         return noteRepository.findByUser(user);
     }
+    
+    public List<Note> getAllNotesByBoardAndUser(Board board, User user) {
+        return noteRepository.findByBoardAndUser(board, user);
+    }
+
 
     
     public Optional<Note> getNoteById(Long id) {

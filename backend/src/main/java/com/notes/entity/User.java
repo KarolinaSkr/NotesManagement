@@ -1,7 +1,9 @@
 package com.notes.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+
 
 @Entity
 @Table(name = "users")
@@ -15,7 +17,9 @@ public class User {
     private String email;
     
     @Column(nullable = false)
+    @JsonIgnore
     private String password;
+
     
     @Column(name = "created_at")
     private LocalDateTime createdAt;

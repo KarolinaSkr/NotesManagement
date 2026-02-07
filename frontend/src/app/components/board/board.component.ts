@@ -5,11 +5,14 @@ import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { NoteComponent } from '../note/note.component';
 import { Note } from '../../models/note.model';
+import { Board } from '../../models/board.model';
 import { NoteService } from '../../services/note.service';
+import { BoardService } from '../../services/board.service';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { ReminderService } from '../../services/reminder.service';
 import { trigger, transition, style, animate, query, stagger, group } from '@angular/animations';
+
 
 
 @Component({
@@ -40,72 +43,411 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
 
   template: `
     <div class="board-container">
-      <header class="board-header">
-        <h1>My Notes Board</h1>
-        <div class="header-controls">
-          <div class="search-section">
-            <input 
-              type="text" 
-              [(ngModel)]="searchQuery" 
-              (input)="searchNotes()"
-              placeholder="Search notes..." 
-              class="search-input">
-            <button *ngIf="searchQuery" class="clear-search-btn" (click)="clearSearch()">×</button>
-          </div>
-          <div class="filter-section">
-            <select [(ngModel)]="selectedTag" (change)="filterByTag()" class="tag-filter">
-              <option value="">All Tags</option>
-              <option *ngFor="let tag of allTags" [value]="tag">{{tag}}</option>
-            </select>
-            <button *ngIf="selectedTag" class="clear-filter-btn" (click)="clearFilter()">×</button>
-          </div>
-
-          <button class="add-btn" (click)="addNote()">
-            <span>+</span>
-            Add Note
-          </button>
-          
-          <div class="user-actions" *ngIf="isAuthenticated$ | async">
-            <span class="user-email">{{ currentUser?.email }}</span>
-            <button class="logout-button" (click)="logout()" title="Logout">
-              Logout
-              <svg class="logout-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </header>
-      
-      <div class="board-area" #boardArea>
-        <div [@noteList]="getAnimationTrigger()" class="notes-container">
-
-          <app-note 
-            *ngFor="let note of filteredNotes; trackBy: trackByNoteId"
-            [note]="note"
-            (update)="updateNote($event)"
-            (delete)="deleteNote($event)"
-            (move)="moveNote($event)"
-            (resize)="resizeNote($event)">
-          </app-note>
+      <!-- Sidebar -->
+      <div class="sidebar" [class.collapsed]="!sidebarExpanded">
+        <div class="sidebar-toggle" (click)="toggleSidebar()">
+          <span class="toggle-arrow" [class.collapsed]="!sidebarExpanded">◀</span>
         </div>
         
-        <div *ngIf="notes.length === 0" class="empty-state">
-          <div class="empty-icon">📝</div>
-          <p>No notes yet. Click "Add Note" to create your first sticky note!</p>
+        <div class="sidebar-content" *ngIf="sidebarExpanded">
+          <div class="boards-list">
+            <div 
+              *ngFor="let board of boards" 
+              class="board-item"
+              [class.active]="selectedBoard?.id === board.id"
+              [class.editing]="editingBoard?.id === board.id"
+              (click)="selectBoard(board)">
+              
+              <div class="board-item-content" *ngIf="editingBoard?.id !== board.id">
+                <span class="board-name">{{ board.name }}</span>
+                <button 
+                  class="edit-board-btn" 
+                  (click)="startEditBoard($event, board)"
+                  title="Edit board">
+                  ✎
+                </button>
+              </div>
+              
+              <div class="board-edit-form" *ngIf="editingBoard?.id === board.id">
+                <input 
+                  type="text" 
+                  [(ngModel)]="editingBoardName"
+                  (keyup.enter)="saveBoardEdit()"
+                  (keyup.escape)="cancelBoardEdit()"
+                  class="board-edit-input"
+                  placeholder="Board name">
+                <div class="board-edit-actions">
+                  <button class="save-btn" (click)="saveBoardEdit()" title="Save">✓</button>
+                  <button class="delete-btn" (click)="confirmDeleteBoard($event)" title="Delete">🗑</button>
+                  <button class="cancel-btn" (click)="cancelBoardEdit($event)" title="Cancel">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <button 
+            class="add-board-btn" 
+            (click)="addBoard()"
+            [disabled]="boards.length >= 20"
+            title="Add new board (max 20)">
+            <span>+</span>
+            Add new board
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="main-content" [class.sidebar-collapsed]="!sidebarExpanded">
+        <header class="board-header">
+          <h1>{{ selectedBoard ? selectedBoard.name : 'My Notes Board' }}</h1>
+          <div class="header-controls">
+            <div class="search-section">
+              <input 
+                type="text" 
+                [(ngModel)]="searchQuery" 
+                (input)="searchNotes()"
+                placeholder="Search notes..." 
+                class="search-input">
+              <button *ngIf="searchQuery" class="clear-search-btn" (click)="clearSearch()">×</button>
+            </div>
+            <div class="filter-section">
+              <select [(ngModel)]="selectedTag" (change)="filterByTag()" class="tag-filter">
+                <option value="">All Tags</option>
+                <option *ngFor="let tag of allTags" [value]="tag">{{tag}}</option>
+              </select>
+              <button *ngIf="selectedTag" class="clear-filter-btn" (click)="clearFilter()">×</button>
+            </div>
+
+            <button class="add-btn" (click)="addNote()" [disabled]="!selectedBoard">
+              <span>+</span>
+              Add Note
+            </button>
+            
+            <div class="user-actions" *ngIf="isAuthenticated$ | async">
+              <span class="user-email">{{ currentUser?.email }}</span>
+              <button class="logout-button" (click)="logout()" title="Logout">
+                Logout
+                <svg class="logout-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </header>
+        
+        <div class="board-area" #boardArea>
+          <div [@noteList]="getAnimationTrigger()" class="notes-container">
+
+            <app-note 
+              *ngFor="let note of filteredNotes; trackBy: trackByNoteId"
+              [note]="note"
+              (update)="updateNote($event)"
+              (delete)="deleteNote($event)"
+              (move)="moveNote($event)"
+              (resize)="resizeNote($event)">
+            </app-note>
+          </div>
+          
+          <!-- Empty state for no boards -->
+          <div *ngIf="boards.length === 0" class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>No boards yet. Create your first board to start working!</p>
+          </div>
+          
+          <!-- Empty state for no notes (when board exists) -->
+          <div *ngIf="boards.length > 0 && notes.length === 0 && selectedBoard" class="empty-state">
+            <div class="empty-icon">📝</div>
+            <p>No notes yet. Click "Add Note" to create your first sticky note!</p>
+          </div>
         </div>
       </div>
     </div>
   `,
+
   styles: [`
     .board-container {
       min-height: 100vh;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       font-family: 'Inter', sans-serif;
       transition: background 0.3s ease;
+      display: flex;
     }
+    
+    /* Sidebar Styles */
+    .sidebar {
+      position: fixed;
+      top: 88px;
+      left: 0;
+      bottom: 0;
+      width: 250px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+      z-index: 100;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    :host-context(.dark-mode) .sidebar {
+      background: rgba(31, 41, 55, 0.95);
+      box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .sidebar.collapsed {
+      width: 40px;
+    }
+    
+    .sidebar-toggle {
+      position: absolute;
+      right: -20px;
+      top: 20px;
+      width: 20px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 0 8px 8px 0;
+      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 101;
+      transition: all 0.3s ease;
+    }
+    
+    :host-context(.dark-mode) .sidebar-toggle {
+      background: rgba(31, 41, 55, 0.95);
+      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    
+    .toggle-arrow {
+      font-size: 12px;
+      color: #4f46e5;
+      transition: transform 0.3s ease;
+    }
+    
+    :host-context(.dark-mode) .toggle-arrow {
+      color: #818cf8;
+    }
+    
+    .toggle-arrow.collapsed {
+      transform: rotate(180deg);
+    }
+    
+    .sidebar-content {
+      flex: 1;
+      padding: 20px 15px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .boards-list {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .board-item {
+      padding: 12px 15px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
+    }
+    
+    :host-context(.dark-mode) .board-item {
+      background: #374151;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .board-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+    
+    :host-context(.dark-mode) .board-item:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    .board-item.active {
+      border-color: #4f46e5;
+      background: #eef2ff;
+    }
+    
+    :host-context(.dark-mode) .board-item.active {
+      border-color: #818cf8;
+      background: #312e81;
+    }
+    
+    .board-item-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .board-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1f2937;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    :host-context(.dark-mode) .board-name {
+      color: #f9fafb;
+    }
+    
+    .edit-board-btn {
+      background: none;
+      border: none;
+      color: #6b7280;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      opacity: 0;
+    }
+    
+    .board-item:hover .edit-board-btn {
+      opacity: 1;
+    }
+    
+    .edit-board-btn:hover {
+      background: #e5e7eb;
+      color: #4f46e5;
+    }
+    
+    :host-context(.dark-mode) .edit-board-btn:hover {
+      background: #4b5563;
+      color: #818cf8;
+    }
+    
+    .board-edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .board-edit-input {
+      padding: 8px 10px;
+      border: 1px solid #4f46e5;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      background: white;
+      color: #1f2937;
+    }
+    
+    :host-context(.dark-mode) .board-edit-input {
+      background: #1f2937;
+      border-color: #818cf8;
+      color: #f9fafb;
+    }
+    
+    .board-edit-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    
+    .board-edit-actions button {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    
+    .save-btn {
+      background: #10b981;
+      color: white;
+    }
+    
+    .save-btn:hover {
+      background: #059669;
+    }
+    
+    .delete-btn {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .delete-btn:hover {
+      background: #dc2626;
+    }
+    
+    .cancel-btn {
+      background: #6b7280;
+      color: white;
+    }
+    
+    .cancel-btn:hover {
+      background: #4b5563;
+    }
+    
+    .add-board-btn {
+      margin-top: 15px;
+      padding: 12px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+    }
+    
+    .add-board-btn:hover:not(:disabled) {
+      background: #4338ca;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    }
+    
+    .add-board-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    
+    .add-board-btn span {
+      font-size: 18px;
+      font-weight: 300;
+    }
+    
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .main-content.sidebar-collapsed {
+      margin-left: 40px;
+    }
+
     
     :host-context(.dark-mode) .board-container {
       background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
@@ -129,12 +471,12 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
 
     .board-header h1 {
       margin: 0;
-      margin-left: 60px;
       font-size: 28px;
       font-weight: 600;
       color: #1f2937;
       transition: color 0.3s ease;
     }
+
     
     :host-context(.dark-mode) .board-header h1 {
       color: #f9fafb;
@@ -155,11 +497,17 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
       transition: all 0.2s ease;
     }
     
-    .add-btn:hover {
+    .add-btn:hover:not(:disabled) {
       background: #4338ca;
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
     }
+    
+    .add-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
     
     .add-btn span {
       font-size: 20px;
@@ -372,8 +720,16 @@ export class BoardComponent implements OnInit, OnDestroy {
   isAuthenticated$: Observable<boolean>;
   currentUser: { email: string } | null = null;
   
+  // Board-related properties
+  boards: Board[] = [];
+  selectedBoard: Board | null = null;
+  sidebarExpanded: boolean = true;
+  editingBoard: Board | null = null;
+  editingBoardName: string = '';
+  
   constructor(
     private noteService: NoteService,
+    private boardService: BoardService,
     private authService: AuthService,
     private router: Router,
     private reminderService: ReminderService
@@ -385,15 +741,141 @@ export class BoardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.loadNotes();
+    this.loadBoards();
   }
+
 
   ngOnDestroy() {
     this.reminderService.stopReminderCheck();
   }
   
+  loadBoards() {
+    this.boardService.getAllBoards().subscribe({
+      next: (boards) => {
+        this.boards = boards;
+        // Select first board by default if available
+        if (boards.length > 0 && !this.selectedBoard) {
+          this.selectBoard(boards[0]);
+        } else if (boards.length === 0) {
+          this.selectedBoard = null;
+          this.notes = [];
+          this.filteredNotes = [];
+        }
+      },
+      error: (error) => {
+        console.error('Error loading boards:', error);
+      }
+    });
+  }
+  
+  selectBoard(board: Board) {
+    this.selectedBoard = board;
+    this.loadNotes();
+  }
+  
+  toggleSidebar() {
+    this.sidebarExpanded = !this.sidebarExpanded;
+  }
+  
+  addBoard() {
+    if (this.boards.length >= 20) {
+      return;
+    }
+    
+    this.boardService.createBoard('New Board').subscribe({
+      next: (board) => {
+        this.boards.push(board);
+        this.selectBoard(board);
+      },
+      error: (error) => {
+        console.error('Error creating board:', error);
+      }
+    });
+  }
+  
+  startEditBoard(event: Event, board: Board) {
+    event.stopPropagation();
+    this.editingBoard = board;
+    this.editingBoardName = board.name;
+  }
+  
+  saveBoardEdit() {
+    if (!this.editingBoard || !this.editingBoardName.trim()) {
+      return;
+    }
+    
+    this.boardService.updateBoard(this.editingBoard.id!, this.editingBoardName.trim()).subscribe({
+      next: (updatedBoard) => {
+        const index = this.boards.findIndex(b => b.id === updatedBoard.id);
+        if (index !== -1) {
+          this.boards[index] = updatedBoard;
+          if (this.selectedBoard?.id === updatedBoard.id) {
+            this.selectedBoard = updatedBoard;
+          }
+        }
+        this.editingBoard = null;
+        this.editingBoardName = '';
+      },
+      error: (error) => {
+        console.error('Error updating board:', error);
+      }
+    });
+  }
+  
+  cancelBoardEdit(event?: Event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.editingBoard = null;
+    this.editingBoardName = '';
+  }
+  
+  confirmDeleteBoard(event: Event) {
+    event.stopPropagation();
+    const confirmed = confirm('Are you sure you want to delete this board? This process is irreversible!');
+    if (confirmed) {
+      this.deleteBoard();
+    } else {
+      this.cancelBoardEdit();
+    }
+  }
+  
+  deleteBoard() {
+    if (!this.editingBoard) {
+      return;
+    }
+    
+    const boardId = this.editingBoard.id!;
+    this.boardService.deleteBoard(boardId).subscribe({
+      next: () => {
+        this.boards = this.boards.filter(b => b.id !== boardId);
+        // If deleted board was selected, select another one
+        if (this.selectedBoard?.id === boardId) {
+          if (this.boards.length > 0) {
+            this.selectBoard(this.boards[0]);
+          } else {
+            this.selectedBoard = null;
+            this.notes = [];
+            this.filteredNotes = [];
+          }
+        }
+        this.editingBoard = null;
+        this.editingBoardName = '';
+      },
+      error: (error) => {
+        console.error('Error deleting board:', error);
+      }
+    });
+  }
+  
   loadNotes() {
-    this.noteService.getAllNotes().subscribe({
+    if (!this.selectedBoard) {
+      this.notes = [];
+      this.filteredNotes = [];
+      return;
+    }
+    
+    this.noteService.getAllNotes(this.selectedBoard.id).subscribe({
       next: (notes) => {
         this.notes = notes;
         this.filteredNotes = notes;
@@ -410,6 +892,7 @@ export class BoardComponent implements OnInit, OnDestroy {
       }
     });
   }
+
 
 
   private saveNotesToLocalStorage(): void {
@@ -465,6 +948,10 @@ export class BoardComponent implements OnInit, OnDestroy {
   }
 
   addNote() {
+    if (!this.selectedBoard) {
+      return;
+    }
+    
     // Clear tag filter if active so new note is visible
     if (this.selectedTag) {
       this.selectedTag = '';
@@ -480,7 +967,7 @@ export class BoardComponent implements OnInit, OnDestroy {
       tags: []
     };
     
-    this.noteService.createNote(newNote).subscribe({
+    this.noteService.createNote(newNote, this.selectedBoard.id!).subscribe({
       next: (note) => {
         this.notes.push(note);
         this.filteredNotes = [...this.notes];
@@ -490,6 +977,7 @@ export class BoardComponent implements OnInit, OnDestroy {
       }
     });
   }
+
 
 
   updateNote(note: Note) {
