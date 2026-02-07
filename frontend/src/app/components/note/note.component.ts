@@ -249,7 +249,7 @@ import { Subscription } from 'rxjs';
       line-height: 1.5;
       color: #4b5563;
       outline: none;
-      min-height: 130px;
+      min-height: 105px;
       transition: color 0.3s ease;
     }
     

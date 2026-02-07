@@ -40,8 +40,10 @@ export class ReminderService {
 
   /**
    * Check all notes for due reminders and show notifications
+   * Public method so it can be called after login to check for missed reminders
    */
-  private checkReminders(): void {
+  public checkReminders(): void {
+
     const notes = this.getAllNotesWithReminders();
     const now = new Date();
 
@@ -228,9 +230,33 @@ export class ReminderService {
   }
 
   /**
+   * Check for missed reminders (reminders that passed while user was logged out)
+   * and show them immediately
+   */
+  public checkMissedReminders(): void {
+    const notes = this.getAllNotesWithReminders();
+    const now = new Date();
+    let missedRemindersCount = 0;
+
+    notes.forEach(note => {
+      if (note.reminderAt && !note.reminderTriggered) {
+        const reminderDate = new Date(note.reminderAt);
+        
+        // If reminder time has passed, show it immediately
+        if (reminderDate <= now) {
+          this.showStyledAlert(note);
+          this.markReminderAsTriggered(note.id!);
+          missedRemindersCount++;
+        }
+      }
+    });
+  }
+
+  /**
    * Get all notes with their reminder data merged
    */
   private getAllNotesWithReminders(): Note[] {
+
     // Get notes from localStorage (stored by board component)
     const notesJson = localStorage.getItem('notes');
     if (!notesJson) {

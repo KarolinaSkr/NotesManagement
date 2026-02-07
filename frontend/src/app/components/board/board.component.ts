@@ -394,12 +394,17 @@ export class BoardComponent implements OnInit, OnDestroy {
         this.updateAllTags();
         // Save notes to localStorage for reminder service
         this.saveNotesToLocalStorage();
+        // Check for missed reminders that passed while user was logged out
+        setTimeout(() => {
+          this.reminderService.checkMissedReminders();
+        }, 1000);
       },
       error: (error) => {
         console.error('Error loading notes:', error);
       }
     });
   }
+
 
   private saveNotesToLocalStorage(): void {
     localStorage.setItem('notes', JSON.stringify(this.notes));

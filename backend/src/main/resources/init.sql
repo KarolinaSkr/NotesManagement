@@ -54,7 +54,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO notes (title, content, position_x, position_y, width, height, color, created_at, user_id)
 SELECT 
     'Getting Started',
-    E'1. Create new notes by clicking the + button\n2. Drag notes to organize\n3. Change note size by dragging the right bottom corner\n4. Use tags to categorize\n5. Switch themes with the moon/sun button',
+    E'1. Create new notes by clicking the + button\n2. Drag notes to organize\n3. Change note size by dragging the right bottom corner\n4. Use tags to categorize\n5. Set reminders\n6. Switch themes with the moon/sun button',
     530.0,
     150.0,
     275.0,
