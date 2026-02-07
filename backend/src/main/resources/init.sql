@@ -15,16 +15,12 @@ CREATE TABLE IF NOT EXISTS notes (
     content TEXT,
     position_x DOUBLE PRECISION NOT NULL,
     position_y DOUBLE PRECISION NOT NULL,
+    width DOUBLE PRECISION,
+    height DOUBLE PRECISION,
     color VARCHAR(7) DEFAULT '#fef3c7',
     created_at TIMESTAMP NOT NULL,
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE
 );
-
--- Add width and height columns if they don't exist (for existing tables)
-ALTER TABLE notes ADD COLUMN IF NOT EXISTS width DOUBLE PRECISION;
-ALTER TABLE notes ADD COLUMN IF NOT EXISTS height DOUBLE PRECISION;
-
-
 
 -- Create note_tags table for ElementCollection
 CREATE TABLE IF NOT EXISTS note_tags (

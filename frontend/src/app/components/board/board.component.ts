@@ -9,7 +9,8 @@ import { NoteService } from '../../services/note.service';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { ReminderService } from '../../services/reminder.service';
-import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
+import { trigger, transition, style, animate, query, stagger, group } from '@angular/animations';
+
 
 @Component({
   selector: 'app-board',
@@ -17,21 +18,25 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
   imports: [CommonModule, FormsModule, NoteComponent],
   animations: [
     trigger('noteList', [
+      transition(':enter, :leave', []),
       transition('* => *', [
-        query(':enter', [
-          style({ opacity: 0, transform: 'scale(0.8) translateY(-20px)' }),
-          stagger(100, [
+        group([
+          query(':enter', [
+            style({ opacity: 0, transform: 'scale(0.8) translateY(-20px)' }),
             animate('300ms cubic-bezier(0.4, 0, 0.2, 1)', 
               style({ opacity: 1, transform: 'scale(1) translateY(0)' }))
-          ])
-        ], { optional: true }),
-        query(':leave', [
-          animate('200ms cubic-bezier(0.4, 0, 0.2, 1)', 
-            style({ opacity: 0, transform: 'scale(0.8) translateY(-10px)' }))
-        ], { optional: true })
+          ], { optional: true }),
+          query(':leave', [
+            animate('300ms cubic-bezier(0.4, 0, 0.2, 1)', 
+              style({ opacity: 0, transform: 'scale(0.8) translateY(-10px)' }))
+          ], { optional: true })
+        ])
       ])
     ])
   ],
+
+
+
 
   template: `
     <div class="board-container">
@@ -75,7 +80,8 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
       </header>
       
       <div class="board-area" #boardArea>
-        <div [@noteList]="filteredNotes.length" class="notes-container">
+        <div [@noteList]="getAnimationTrigger()" class="notes-container">
+
           <app-note 
             *ngFor="let note of filteredNotes; trackBy: trackByNoteId"
             [note]="note"
@@ -459,6 +465,12 @@ export class BoardComponent implements OnInit, OnDestroy {
   }
 
   addNote() {
+    // Clear tag filter if active so new note is visible
+    if (this.selectedTag) {
+      this.selectedTag = '';
+      this.applyFilters();
+    }
+    
     const newNote: Note = {
       title: '',
       content: '',
@@ -478,6 +490,7 @@ export class BoardComponent implements OnInit, OnDestroy {
       }
     });
   }
+
 
   updateNote(note: Note) {
     if (note.id) {
@@ -537,6 +550,13 @@ export class BoardComponent implements OnInit, OnDestroy {
   trackByNoteId(index: number, note: Note): number {
     return note.id || index;
   }
+
+  getAnimationTrigger(): string {
+    // Create a unique trigger that changes whenever filter or search changes
+    // This ensures animations run when switching between different filters
+    return `${this.selectedTag}-${this.searchQuery}-${this.filteredNotes.length}`;
+  }
+
 
   logout(): void {
     this.authService.logout().subscribe({

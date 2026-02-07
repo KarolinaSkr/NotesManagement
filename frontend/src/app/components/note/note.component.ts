@@ -895,7 +895,9 @@ export class NoteComponent implements OnInit, OnDestroy {
   }
 
   formatDate(dateString: string): string {
-    const date = new Date(dateString);
+    // Ensure the date is interpreted as UTC by appending Z if not present
+    const utcString = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+    const date = new Date(utcString);
     return date.toLocaleDateString('pl-PL', {
       year: 'numeric',
       month: 'short',
@@ -968,7 +970,7 @@ export class NoteComponent implements OnInit, OnDestroy {
   exportToPdf() {
     const title = this.note.title || 'Untitled Note';
     const content = this.note.content || '';
-    const date = this.note.createdAt ? new Date(this.note.createdAt).toLocaleString() : '';
+    const date = this.note.createdAt ? this.formatDate(this.note.createdAt) : '';
     
     // Use global pdfMake loaded from CDN
     const pdfMake = (window as any).pdfMake;
