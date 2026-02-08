@@ -178,4 +178,9 @@ public class Note {
     public void setBoard(Board board) {
         this.board = board;
     }
+    
+    // Method to expose board ID for JSON serialization
+    public Long getBoardId() {
+        return board != null ? board.getId() : null;
+    }
 }

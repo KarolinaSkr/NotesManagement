@@ -66,7 +66,12 @@ public class NoteController {
         return new ResponseEntity<>(notes, HttpStatus.OK);
     }
 
-
+    @GetMapping("/all")
+    public ResponseEntity<List<Note>> getAllNotesForUser() {
+        User currentUser = getCurrentUser();
+        List<Note> notes = noteService.getAllNotesByUser(currentUser);
+        return new ResponseEntity<>(notes, HttpStatus.OK);
+    }
     
     @GetMapping("/{id}")
     public ResponseEntity<Note> getNoteById(@PathVariable Long id) {

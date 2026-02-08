@@ -11,4 +11,5 @@ export interface Note {
   tags?: string[];
   reminderAt?: Date | null;
   reminderTriggered?: boolean;
+  boardId?: number;
 }

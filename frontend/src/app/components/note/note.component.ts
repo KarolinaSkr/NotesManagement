@@ -26,10 +26,12 @@ import { Subscription } from 'rxjs';
         <span 
           *ngFor="let tag of note.tags; let i = index" 
           class="tag-badge"
+          [title]="tag"
           (click)="removeTag($event, i)">
-          {{tag}} ×
+          {{tag | slice:0:15}}{{tag.length > 15 ? '...' : ''}} ×
         </span>
       </div>
+
       
       <div class="note-header">
         <input 
@@ -76,17 +78,22 @@ import { Subscription } from 'rxjs';
           </button>
         </div>
         
-        <div class="tags-input-section">
+        <div class="tags-input-section" *ngIf="!note.tags || note.tags.length < 10">
           <div class="tag-input-container">
             <input 
               type="text" 
               [(ngModel)]="newTag" 
               (keydown.enter)="addTag()"
-              placeholder="Add tag..."
-              class="tag-input">
-            <button class="add-tag-btn" (click)="addTag()">+</button>
+              placeholder="Add tag (max 10)..."
+              class="tag-input"
+              maxlength="30">
+            <button class="add-tag-btn" (click)="addTag()" [disabled]="!newTag.trim() || (note.tags && note.tags.length >= 10)">+</button>
           </div>
         </div>
+        <div class="tags-limit-msg" *ngIf="note.tags && note.tags.length >= 10">
+          <span>Tag limit reached (10/10)</span>
+        </div>
+
         
         <div class="note-date" *ngIf="note.createdAt">
           {{formatDate(note.createdAt)}}
@@ -189,7 +196,7 @@ import { Subscription } from 'rxjs';
       border-radius: 4px;
       transition: all 0.2s ease;
       flex-shrink: 0;
-      margin-left: 4px;
+      margin-left: 2px;
       padding: 0;
       line-height: 1;
     }
@@ -206,7 +213,7 @@ import { Subscription } from 'rxjs';
       border-radius: 4px;
       transition: all 0.2s ease;
       flex-shrink: 0;
-      margin-left: 4px;
+      margin-left: 2px;
       padding: 0;
       color: #6b7280;
     }
@@ -249,7 +256,7 @@ import { Subscription } from 'rxjs';
       line-height: 1.5;
       color: #4b5563;
       outline: none;
-      min-height: 105px;
+      min-height: 65px;
       transition: color 0.3s ease;
     }
     
@@ -312,11 +319,15 @@ import { Subscription } from 'rxjs';
       gap: 6px;
       margin-bottom: 8px;
       min-height: 24px;
+      max-height: 80px;
+      overflow-y: auto;
     }
     
     .tags-display.top-tags-display {
       margin-bottom: 6px;
+      flex-shrink: 0;
     }
+
     
     .tags-input-section {
       margin-top: 12px;
@@ -333,7 +344,13 @@ import { Subscription } from 'rxjs';
       display: inline-flex;
       align-items: center;
       gap: 4px;
+      max-width: 145px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
+
     
     .tag-badge:hover {
       background: rgba(239, 68, 68, 0.2);
@@ -402,9 +419,27 @@ import { Subscription } from 'rxjs';
       transition: all 0.2s ease;
     }
     
-    .add-tag-btn:hover {
+    .add-tag-btn:hover:not(:disabled) {
       background: #4338ca;
     }
+    
+    .add-tag-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    
+    .tags-limit-msg {
+      font-size: 11px;
+      color: #ef4444;
+      text-align: center;
+      margin-top: 8px;
+      font-style: italic;
+    }
+    
+    :host-context(.dark-mode) .tags-limit-msg {
+      color: #f87171;
+    }
+
     
     .note-date {
       margin-top: 8px;
@@ -496,7 +531,6 @@ import { Subscription } from 'rxjs';
       color: white;
     }
 
-    /* Reminder triggered border - static red, outside note without affecting content */
     .note.reminder-triggered {
       outline: 3px solid #ef4444;
       outline-offset: 3px;
@@ -878,6 +912,11 @@ export class NoteComponent implements OnInit, OnDestroy {
       if (!this.note.tags) {
         this.note.tags = [];
       }
+      // Limit to 10 tags
+      if (this.note.tags.length >= 10) {
+        alert('Maximum 10 tags allowed per note');
+        return;
+      }
       if (!this.note.tags.includes(this.newTag.trim())) {
         this.note.tags.push(this.newTag.trim());
         this.onUpdate();
@@ -885,6 +924,7 @@ export class NoteComponent implements OnInit, OnDestroy {
       this.newTag = '';
     }
   }
+
 
   removeTag(event: Event, index: number) {
     event.stopPropagation();

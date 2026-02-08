@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -68,7 +69,20 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                   </svg>
                 </button>
+                <span class="board-match-count" *ngIf="getBoardMatchCount(board.id!) > 0">
+                  {{getBoardMatchCount(board.id!)}}
+                </span>
+                <span class="board-reminder-bell" *ngIf="hasTriggeredReminders(board.id!)" title="Reminder triggered!">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bell-shaking">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  </svg>
+                </span>
+
               </div>
+
+
+
             </div>
 
           </div>
@@ -323,13 +337,56 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      flex: 1;
     }
     
     :host-context(.dark-mode) .board-name {
       color: #f9fafb;
     }
     
+    .board-match-count {
+      background: #ef4444;
+      color: white;
+      border-radius: 50%;
+      min-width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 4px;
+      padding: 0 6px;
+    }
+
+    
+    :host-context(.dark-mode) .board-match-count {
+      background: #ef4444;
+    }
+    
+    .board-reminder-bell {
+      color: #ef4444;
+      margin-left: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: bellShake 0.5s ease-in-out infinite;
+    }
+    
+    @keyframes bellShake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+    
+    :host-context(.dark-mode) .board-reminder-bell {
+      color: #f87171;
+    }
+
+
+    
     .edit-board-btn {
+
       background: none;
       border: none;
       color: #6b7280;
@@ -597,7 +654,12 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
       font-weight: 600;
       color: #1f2937;
       transition: color 0.3s ease;
+      max-width: 700px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
+
 
     
     :host-context(.dark-mode) .board-header h1 {
@@ -849,6 +911,10 @@ export class BoardComponent implements OnInit, OnDestroy {
   editingBoard: Board | null = null;
   editingBoardName: string = '';
   showDeleteConfirm: boolean = false;
+  
+  // Properties for cross-board filtering
+  allUserNotes: Note[] = [];
+  boardMatchCounts: Map<number, number> = new Map();
 
   
   constructor(
@@ -856,8 +922,10 @@ export class BoardComponent implements OnInit, OnDestroy {
     private boardService: BoardService,
     private authService: AuthService,
     private router: Router,
-    private reminderService: ReminderService
+    private reminderService: ReminderService,
+    private cdr: ChangeDetectorRef
   ) {
+
     this.isAuthenticated$ = this.authService.isAuthenticated$;
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
@@ -866,12 +934,30 @@ export class BoardComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadBoards();
+    // Load all notes for global reminder checking
+    this.reminderService.loadAllNotesForReminders();
+    
+    // Subscribe to reminder state changes to update bell icons
+    this.reminderService.reminderStateChanged$.subscribe(() => {
+      // Force refresh of board list to update bell icons
+      this.cdr.detectChanges();
+    });
   }
 
 
   ngOnDestroy() {
     this.reminderService.stopReminderCheck();
   }
+  
+  /**
+   * Check if a board has any triggered reminders
+   */
+  hasTriggeredReminders(boardId: number): boolean {
+    return this.reminderService.hasTriggeredRemindersForBoard(boardId);
+  }
+
+
+
   
   loadBoards() {
     this.boardService.getAllBoards().subscribe({
@@ -1001,7 +1087,8 @@ export class BoardComponent implements OnInit, OnDestroy {
     this.noteService.getAllNotes(this.selectedBoard.id).subscribe({
       next: (notes) => {
         this.notes = notes;
-        this.filteredNotes = notes;
+        // Apply current filters to the newly loaded notes
+        this.applyFilters();
         this.updateAllTags();
         // Save notes to localStorage for reminder service
         this.saveNotesToLocalStorage();
@@ -1068,6 +1155,63 @@ export class BoardComponent implements OnInit, OnDestroy {
     }
     
     this.filteredNotes = result;
+    
+    // Update board match counts based on current filters
+    this.calculateBoardMatchCounts();
+  }
+
+  private calculateBoardMatchCounts() {
+    // Only calculate if there's an active filter
+    if (!this.selectedTag && !this.searchQuery.trim()) {
+      this.boardMatchCounts.clear();
+      return;
+    }
+    
+    // Load all user notes if not already loaded
+    this.noteService.getAllNotesForUser().subscribe({
+      next: (allNotes) => {
+        this.allUserNotes = allNotes;
+        
+        // Calculate match counts for each board
+        const counts = new Map<number, number>();
+        
+        this.boards.forEach(board => {
+          const boardNotes = allNotes.filter(note => note.boardId === board.id);
+          
+          let matchingNotes = boardNotes;
+          
+          // Apply tag filter
+          if (this.selectedTag) {
+            matchingNotes = matchingNotes.filter(note => 
+              note.tags && note.tags.includes(this.selectedTag)
+            );
+          }
+          
+          // Apply search filter
+          if (this.searchQuery.trim()) {
+            const query = this.searchQuery.toLowerCase().trim();
+            matchingNotes = matchingNotes.filter(note => 
+              (note.title && note.title.toLowerCase().includes(query)) ||
+              (note.content && note.content.toLowerCase().includes(query))
+            );
+          }
+          
+          // Store count if there are matching notes
+          if (matchingNotes.length > 0) {
+            counts.set(board.id!, matchingNotes.length);
+          }
+        });
+        
+        this.boardMatchCounts = counts;
+      },
+      error: (error) => {
+        console.error('Error loading all notes for match counts:', error);
+      }
+    });
+  }
+
+  getBoardMatchCount(boardId: number): number {
+    return this.boardMatchCounts.get(boardId) || 0;
   }
 
   addNote() {
@@ -1100,8 +1244,6 @@ export class BoardComponent implements OnInit, OnDestroy {
       }
     });
   }
-
-
 
   updateNote(note: Note) {
     if (note.id) {
@@ -1167,7 +1309,6 @@ export class BoardComponent implements OnInit, OnDestroy {
     // This ensures animations run when switching between different filters
     return `${this.selectedTag}-${this.searchQuery}-${this.filteredNotes.length}`;
   }
-
 
   logout(): void {
     this.authService.logout().subscribe({

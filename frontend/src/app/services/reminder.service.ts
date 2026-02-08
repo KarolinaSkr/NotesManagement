@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import { Note } from '../models/note.model';
+import { NoteService } from './note.service';
 
 @Injectable({
   providedIn: 'root'
@@ -11,11 +12,19 @@ export class ReminderService {
 
   // Subject to notify components when a reminder is triggered
   public reminderTriggered$ = new Subject<number>();
+  
+  // Subject to notify when any reminder state changes (for board bell icons)
+  public reminderStateChanged$ = new Subject<void>();
+  
+  // Store all notes across all boards for global reminder checking
+  private allNotes: Note[] = [];
 
-  constructor() {
+
+  constructor(private noteService: NoteService) {
     this.loadRemindersFromStorage();
     this.startReminderCheck();
   }
+
   /**
    * Start the global timer to check for due reminders
    */
@@ -256,34 +265,89 @@ export class ReminderService {
    * Get all notes with their reminder data merged
    */
   private getAllNotesWithReminders(): Note[] {
+    // Use cached all notes if available
+    if (this.allNotes.length > 0) {
+      return this.mergeRemindersWithNotes(this.allNotes);
+    }
 
-    // Get notes from localStorage (stored by board component)
+    // Fallback to localStorage notes
     const notesJson = localStorage.getItem('notes');
     if (!notesJson) {
-      console.log('No notes found in localStorage');
       return [];
     }
 
     try {
       const notes: Note[] = JSON.parse(notesJson);
-      const reminders = this.getRemindersFromStorage();
-
-      return notes.map(note => {
-        const reminder = reminders[note.id!];
-        if (reminder) {
-          return {
-            ...note,
-            reminderAt: reminder.reminderAt ? new Date(reminder.reminderAt) : null,
-            reminderTriggered: reminder.reminderTriggered || false
-          };
-        }
-        return note;
-      });
+      return this.mergeRemindersWithNotes(notes);
     } catch (error) {
       console.error('Error parsing notes from localStorage:', error);
       return [];
     }
   }
+
+  /**
+   * Merge reminder data with notes
+   */
+  private mergeRemindersWithNotes(notes: Note[]): Note[] {
+    const reminders = this.getRemindersFromStorage();
+
+    return notes.map(note => {
+      const reminder = reminders[note.id!];
+      if (reminder) {
+        return {
+          ...note,
+          reminderAt: reminder.reminderAt ? new Date(reminder.reminderAt) : null,
+          reminderTriggered: reminder.reminderTriggered || false
+        };
+      }
+      return note;
+    });
+  }
+
+  /**
+   * Load all notes from all boards for global reminder checking
+   */
+  public loadAllNotesForReminders(): void {
+    this.noteService.getAllNotesForUser().subscribe({
+      next: (notes) => {
+        this.allNotes = notes;
+        // Check reminders immediately after loading
+        this.checkReminders();
+        // Notify that reminder state may have changed
+        this.reminderStateChanged$.next();
+      },
+      error: (error) => {
+        console.error('Error loading all notes for reminders:', error);
+      }
+    });
+  }
+
+  /**
+   * Check if a specific board has any triggered reminders
+   */
+  public hasTriggeredRemindersForBoard(boardId: number): boolean {
+    const reminders = this.getRemindersFromStorage();
+    
+    return this.allNotes.some(note => {
+      if (note.boardId !== boardId) return false;
+      const reminder = reminders[note.id!];
+      return reminder && reminder.reminderTriggered;
+    });
+  }
+
+  /**
+   * Get count of triggered reminders for a board
+   */
+  public getTriggeredRemindersCountForBoard(boardId: number): number {
+    const reminders = this.getRemindersFromStorage();
+    
+    return this.allNotes.filter(note => {
+      if (note.boardId !== boardId) return false;
+      const reminder = reminders[note.id!];
+      return reminder && reminder.reminderTriggered;
+    }).length;
+  }
+
 
   /**
    * Load reminders from localStorage
@@ -320,7 +384,11 @@ export class ReminderService {
       reminders[noteId].triggeredAt = null;
       this.saveRemindersToStorage(reminders);
     }
+    
+    // Notify that reminder state changed
+    this.reminderStateChanged$.next();
   }
+
 
   /**
    * Clean up old triggered reminders (optional maintenance)
