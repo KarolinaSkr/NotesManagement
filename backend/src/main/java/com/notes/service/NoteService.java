@@ -6,6 +6,7 @@ import com.notes.entity.User;
 import com.notes.repository.NoteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -45,6 +46,7 @@ public class NoteService {
         return noteRepository.save(note);
     }
     
+    @Transactional
     public Note updateNote(Long id, Note noteDetails, User user) {
         Optional<Note> optionalNote = noteRepository.findById(id);
         if (optionalNote.isPresent()) {
@@ -60,7 +62,16 @@ public class NoteService {
             note.setWidth(noteDetails.getWidth());
             note.setHeight(noteDetails.getHeight());
             note.setColor(noteDetails.getColor());
-            note.setTags(noteDetails.getTags());
+            // Properly handle tags to avoid duplicate key violations
+            // First delete existing tags from database
+            noteRepository.deleteTagsByNoteId(id);
+            // Flush to ensure delete is committed
+            noteRepository.flush();
+            // Then clear the in-memory list and add new tags
+            note.getTags().clear();
+            if (noteDetails.getTags() != null) {
+                note.getTags().addAll(noteDetails.getTags());
+            }
 
             return noteRepository.save(note);
         }
