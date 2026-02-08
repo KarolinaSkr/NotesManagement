@@ -10,7 +10,10 @@ public class RegisterRequest {
     @NotBlank(message = "Email is required")
     @Email(message = "Please enter a valid email address")
     @Pattern(regexp = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$", message = "Please enter a valid email address")
+    @Size(max = 255, message = "Email must not exceed 255 characters")
+    @Pattern(regexp = "^[^<>\\\"'&]*$", message = "Email contains invalid characters")
     private String email;
+
 
     
     @NotBlank(message = "Password is required")
