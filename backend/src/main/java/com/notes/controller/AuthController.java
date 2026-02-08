@@ -2,6 +2,10 @@ package com.notes.controller;
 
 import com.notes.dto.LoginRequest;
 import com.notes.dto.LoginResponse;
+import com.notes.dto.RegisterRequest;
+import com.notes.dto.RegisterResponse;
+import com.notes.entity.User;
+import com.notes.repository.UserRepository;
 import com.notes.security.JwtUtil;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +16,12 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
+
 
 @RestController
 @RequestMapping("/api/auth")
@@ -24,6 +33,13 @@ public class AuthController {
     
     @Autowired
     private JwtUtil jwtUtil;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
@@ -61,6 +77,41 @@ public class AuthController {
         return ResponseEntity.ok(new SuccessResponse("Logout successful"));
     }
     
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        try {
+            // Check if passwords match
+            if (!registerRequest.isPasswordMatching()) {
+                Map<String, String> errors = new HashMap<>();
+                errors.put("confirmPassword", "Passwords do not match");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ValidationErrorResponse("Validation failed", errors));
+            }
+            
+            // Check if email already exists
+            if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new RegisterResponse(false, "An account with this email already exists"));
+            }
+            
+            // Create new user
+            User newUser = new User();
+            newUser.setEmail(registerRequest.getEmail());
+            newUser.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+            
+            // Save user to database
+            User savedUser = userRepository.save(newUser);
+            
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new RegisterResponse(true, "Account created successfully", savedUser.getEmail()));
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new RegisterResponse(false, "An error occurred during registration"));
+        }
+    }
+
+    
     // Inner classes for simple responses
     public static class ErrorResponse {
         private String error;
@@ -91,6 +142,32 @@ public class AuthController {
         
         public void setMessage(String message) {
             this.message = message;
+        }
+    }
+    
+    public static class ValidationErrorResponse {
+        private String error;
+        private Map<String, String> details;
+        
+        public ValidationErrorResponse(String error, Map<String, String> details) {
+            this.error = error;
+            this.details = details;
+        }
+        
+        public String getError() {
+            return error;
+        }
+        
+        public void setError(String error) {
+            this.error = error;
+        }
+        
+        public Map<String, String> getDetails() {
+            return details;
+        }
+        
+        public void setDetails(Map<String, String> details) {
+            this.details = details;
         }
     }
 }

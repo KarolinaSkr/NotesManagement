@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
-import { LoginRequest } from '../../models/user.model';
+import { LoginRequest, RegisterRequest } from '../../models/user.model';
+
 
 
 @Component({
@@ -16,10 +17,11 @@ import { LoginRequest } from '../../models/user.model';
       <div class="login-card">
         <div class="login-header">
           <h1>📝 Notes Management</h1>
-          <p>Sign in to access your notes</p>
+          <p>{{ isRegistering ? 'Create your account' : 'Sign in to access your notes' }}</p>
         </div>
         
-        <form (ngSubmit)="onSubmit()" #loginForm="ngForm" class="login-form">
+        <!-- Login Form -->
+        <form *ngIf="!isRegistering" (ngSubmit)="onSubmit()" #loginForm="ngForm" class="login-form">
           <div class="form-group">
             <label for="email">Email</label>
             <input
@@ -54,7 +56,6 @@ import { LoginRequest } from '../../models/user.model';
             <div class="error-message" *ngIf="passwordInput.invalid && passwordInput.touched">
               <span *ngIf="passwordInput.errors?.['required']">Password is required</span>
             </div>
-
           </div>
           
           <div class="error-alert" *ngIf="errorMessage">
@@ -71,7 +72,96 @@ import { LoginRequest } from '../../models/user.model';
           </button>
         </form>
         
-        <div class="demo-info">
+        <!-- Registration Form -->
+        <form *ngIf="isRegistering" (ngSubmit)="onRegisterSubmit()" #registerForm="ngForm" class="login-form">
+          <div class="form-group">
+            <label for="reg-email">Email</label>
+            <input
+              type="text"
+              id="reg-email"
+              name="email"
+              [(ngModel)]="registerData.email"
+              required
+              pattern="^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$"
+              #regEmailInput="ngModel"
+              placeholder="Enter your email"
+              [class.error]="(regEmailInput.invalid && regEmailInput.touched) || registerErrors['email']"
+            />
+            <div class="error-message" *ngIf="(regEmailInput.invalid && regEmailInput.touched) || registerErrors['email']">
+              <span *ngIf="regEmailInput.errors?.['required']">Email is required</span>
+              <span *ngIf="regEmailInput.errors?.['pattern']">Please enter a valid email</span>
+              <span *ngIf="registerErrors['email']">{{ registerErrors['email'] }}</span>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="reg-password">Password</label>
+            <input
+              type="password"
+              id="reg-password"
+              name="password"
+              [(ngModel)]="registerData.password"
+              required
+              minlength="6"
+              pattern="^(?=.*[A-Z])(?=.*\\d).+$"
+              #regPasswordInput="ngModel"
+              placeholder="Enter your password"
+              [class.error]="(regPasswordInput.invalid && regPasswordInput.touched) || registerErrors['password']"
+            />
+            <div class="error-message" *ngIf="(regPasswordInput.invalid && regPasswordInput.touched) || registerErrors['password']">
+              <span *ngIf="regPasswordInput.errors?.['required']">Password is required</span>
+              <span *ngIf="regPasswordInput.errors?.['minlength']">Password must be at least 6 characters</span>
+              <span *ngIf="regPasswordInput.errors?.['pattern'] && registerData.password && registerData.password.length >= 6">Password must contain at least one uppercase letter and one digit</span>
+              <span *ngIf="registerErrors['password']">{{ registerErrors['password'] }}</span>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="confirm-password">Confirm Password</label>
+            <input
+              type="password"
+              id="confirm-password"
+              name="confirmPassword"
+              [(ngModel)]="registerData.confirmPassword"
+              required
+              #confirmPasswordInput="ngModel"
+              placeholder="Confirm your password"
+              [class.error]="(confirmPasswordInput.invalid && confirmPasswordInput.touched) || registerErrors['confirmPassword'] || (registerData.confirmPassword && registerData.password !== registerData.confirmPassword)"
+            />
+            <div class="error-message" *ngIf="(confirmPasswordInput.invalid && confirmPasswordInput.touched) || registerErrors['confirmPassword'] || (registerData.confirmPassword && registerData.password !== registerData.confirmPassword)">
+              <span *ngIf="confirmPasswordInput.errors?.['required']">Please confirm your password</span>
+              <span *ngIf="registerData.confirmPassword && registerData.password !== registerData.confirmPassword">Passwords do not match</span>
+              <span *ngIf="registerErrors['confirmPassword']">{{ registerErrors['confirmPassword'] }}</span>
+            </div>
+          </div>
+          
+          <div class="success-alert" *ngIf="successMessage">
+            {{ successMessage }}
+          </div>
+          
+          <div class="error-alert" *ngIf="errorMessage">
+            {{ errorMessage }}
+          </div>
+          
+          <button 
+            type="submit" 
+            class="login-button" 
+            [disabled]="registerForm.invalid || isLoading || registerData.password !== registerData.confirmPassword"
+          >
+            <span *ngIf="!isLoading">Create Account</span>
+            <span *ngIf="isLoading">Creating account...</span>
+          </button>
+        </form>
+        
+        <!-- Toggle Link -->
+        <div class="toggle-form">
+          <a href="javascript:void(0)" (click)="toggleForm()" class="toggle-link">
+            {{ isRegistering ? "Already have an account? Sign in!" : "Don't have an account? Create one!" }}
+          </a>
+        </div>
+
+        
+        <div class="demo-info" *ngIf="!isRegistering">
           <h3>Demo Credentials</h3>
           <p><strong>Email:</strong> demo&#64;example.com</p>
           <p><strong>Password:</strong> password123</p>
@@ -79,6 +169,7 @@ import { LoginRequest } from '../../models/user.model';
       </div>
     </div>
   `,
+
   styles: [`
     .login-container {
       min-height: 100vh;
@@ -93,7 +184,6 @@ import { LoginRequest } from '../../models/user.model';
     .login-container.dark-mode {
       background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
     }
-
     
     .login-card {
       background: white;
@@ -109,7 +199,6 @@ import { LoginRequest } from '../../models/user.model';
       background: #2d2d44;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
     }
-
     
     .login-header {
       text-align: center;
@@ -318,7 +407,44 @@ import { LoginRequest } from '../../models/user.model';
       border-top-color: #4a4a6a;
     }
 
+    .toggle-form {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .toggle-link {
+      color: #667eea;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+
+    .toggle-link:hover {
+      color: #764ba2;
+      text-decoration: underline;
+    }
+
+    .dark-mode .toggle-link {
+      color: #8888ff;
+    }
+
+    .dark-mode .toggle-link:hover {
+      color: #aaaaff;
+    }
+
+    .success-alert {
+      background: #efe;
+      color: #3c3;
+      padding: 12px;
+      border-radius: 6px;
+      border-left: 4px solid #3c3;
+      font-size: 14px;
+    }
+
   `]
+
 })
 export class LoginComponent {
   credentials: LoginRequest = {
@@ -326,8 +452,17 @@ export class LoginComponent {
     password: ''
   };
   
+  registerData: RegisterRequest = {
+    email: '',
+    password: '',
+    confirmPassword: ''
+  };
+  
   errorMessage: string = '';
+  successMessage: string = '';
   isLoading: boolean = false;
+  isRegistering: boolean = false;
+  registerErrors: { [key: string]: string } = {};
 
   constructor(
     private authService: AuthService,
@@ -335,6 +470,16 @@ export class LoginComponent {
     public themeService: ThemeService
   ) {}
 
+  toggleForm(): void {
+    this.isRegistering = !this.isRegistering;
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.registerErrors = {};
+    
+    // Reset forms
+    this.credentials = { email: '', password: '' };
+    this.registerData = { email: '', password: '', confirmPassword: '' };
+  }
 
   onSubmit(): void {
     if (this.isLoading) return;
@@ -352,6 +497,49 @@ export class LoginComponent {
           this.errorMessage = 'Invalid email or password. Please try again.';
         } else {
           this.errorMessage = 'An error occurred. Please try again later.';
+        }
+      }
+    });
+  }
+
+  onRegisterSubmit(): void {
+    if (this.isLoading) return;
+    
+    // Frontend validation
+    this.registerErrors = {};
+    
+    if (this.registerData.password !== this.registerData.confirmPassword) {
+      this.registerErrors['confirmPassword'] = 'Passwords do not match';
+      return;
+    }
+    
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+    
+    this.authService.register(this.registerData).subscribe({
+      next: (response) => {
+        this.isLoading = false;
+        if (response.success) {
+          this.successMessage = 'Account created successfully! Redirecting to login...';
+          setTimeout(() => {
+            this.toggleForm();
+            this.credentials.email = response.email || '';
+          }, 2000);
+        } else {
+          this.errorMessage = response.message || 'Registration failed. Please try again.';
+        }
+      },
+      error: (error) => {
+        this.isLoading = false;
+        if (error.status === 409) {
+          this.errorMessage = 'An account with this email already exists.';
+        } else if (error.status === 400 && error.error?.details) {
+          // Handle validation errors from backend
+          this.registerErrors = error.error.details;
+          this.errorMessage = 'Please correct the errors above.';
+        } else {
+          this.errorMessage = error.error?.message || 'An error occurred during registration. Please try again.';
         }
       }
     });

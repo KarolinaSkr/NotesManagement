@@ -776,7 +776,7 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
     }
     
     .clear-search-btn {
-      background: #6b7280;
+      background: #ef4444;
       color: white;
       border: none;
       border-radius: 50%;

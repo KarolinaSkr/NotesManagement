@@ -13,3 +13,15 @@ export interface LoginResponse {
   email: string;
   message: string;
 }
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  email?: string;
+}

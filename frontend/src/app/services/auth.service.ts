@@ -2,7 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
-import { LoginRequest, LoginResponse, User } from '../models/user.model';
+import { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, User } from '../models/user.model';
+
 
 @Injectable({
   providedIn: 'root'
@@ -44,6 +45,11 @@ export class AuthService {
       })
     );
   }
+
+  register(registerData: RegisterRequest): Observable<RegisterResponse> {
+    return this.http.post<RegisterResponse>(`${this.apiUrl}/register`, registerData);
+  }
+
 
   private clearAuth(): void {
     localStorage.removeItem(this.tokenKey);
