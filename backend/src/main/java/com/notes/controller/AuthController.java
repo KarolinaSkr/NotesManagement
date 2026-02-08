@@ -7,6 +7,8 @@ import com.notes.dto.RegisterResponse;
 import com.notes.entity.User;
 import com.notes.repository.UserRepository;
 import com.notes.security.JwtUtil;
+import com.notes.service.DemoUserService;
+
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -39,9 +41,13 @@ public class AuthController {
     
     @Autowired
     private PasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private DemoUserService demoUserService;
 
     
     @PostMapping("/login")
+
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -54,6 +60,11 @@ public class AuthController {
             SecurityContextHolder.getContext().setAuthentication(authentication);
             String jwt = jwtUtil.generateToken(authentication.getName());
             
+            // Initialize demo user data if this is the demo user
+            if (demoUserService.isDemoUser(authentication.getName())) {
+                demoUserService.initializeDemoUserData();
+            }
+            
             LoginResponse response = new LoginResponse(
                 jwt,
                 authentication.getName(),
@@ -61,6 +72,7 @@ public class AuthController {
             );
             
             return ResponseEntity.ok(response);
+
             
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -73,9 +85,17 @@ public class AuthController {
     
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
+        // Get current authentication before clearing
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && demoUserService.isDemoUser(authentication.getName())) {
+            // Clean up demo user data on logout
+            demoUserService.cleanupDemoUserData();
+        }
+        
         SecurityContextHolder.clearContext();
         return ResponseEntity.ok(new SuccessResponse("Logout successful"));
     }
+
     
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
@@ -102,8 +122,12 @@ public class AuthController {
             // Save user to database
             User savedUser = userRepository.save(newUser);
             
+            // Initialize default data for regular users (one-time only, not for demo user)
+            demoUserService.initializeUserData(savedUser);
+            
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new RegisterResponse(true, "Account created successfully", savedUser.getEmail()));
+
             
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

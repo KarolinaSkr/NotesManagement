@@ -126,11 +126,13 @@ import { LoginRequest, RegisterRequest } from '../../models/user.model';
               required
               #confirmPasswordInput="ngModel"
               placeholder="Confirm your password"
-              [class.error]="(confirmPasswordInput.invalid && confirmPasswordInput.touched) || registerErrors['confirmPassword'] || (registerData.confirmPassword && registerData.password !== registerData.confirmPassword)"
+              [class.error]="(confirmPasswordInput.invalid && confirmPasswordInput.touched) || registerErrors['confirmPassword'] || (confirmPasswordInput.touched && registerData.confirmPassword && registerData.password !== registerData.confirmPassword)"
+
             />
-            <div class="error-message" *ngIf="(confirmPasswordInput.invalid && confirmPasswordInput.touched) || registerErrors['confirmPassword'] || (registerData.confirmPassword && registerData.password !== registerData.confirmPassword)">
+            <div class="error-message" *ngIf="(confirmPasswordInput.invalid && confirmPasswordInput.touched) || registerErrors['confirmPassword'] || (confirmPasswordInput.touched && registerData.confirmPassword && registerData.password !== registerData.confirmPassword)">
               <span *ngIf="confirmPasswordInput.errors?.['required']">Please confirm your password</span>
-              <span *ngIf="registerData.confirmPassword && registerData.password !== registerData.confirmPassword">Passwords do not match</span>
+              <span *ngIf="confirmPasswordInput.touched && registerData.confirmPassword && registerData.password !== registerData.confirmPassword">Passwords do not match</span>
+
               <span *ngIf="registerErrors['confirmPassword']">{{ registerErrors['confirmPassword'] }}</span>
             </div>
           </div>
