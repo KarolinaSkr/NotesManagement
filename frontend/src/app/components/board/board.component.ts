@@ -55,34 +55,22 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
               *ngFor="let board of boards" 
               class="board-item"
               [class.active]="selectedBoard?.id === board.id"
-              [class.editing]="editingBoard?.id === board.id"
               (click)="selectBoard(board)">
               
-              <div class="board-item-content" *ngIf="editingBoard?.id !== board.id">
+              <div class="board-item-content">
                 <span class="board-name">{{ board.name }}</span>
-                <button 
-                  class="edit-board-btn" 
-                  (click)="startEditBoard($event, board)"
+                <button
+                  class="edit-board-btn"
+                  (click)="startEditBoard(board, $event)"
                   title="Edit board">
-                  ✎
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
                 </button>
               </div>
-              
-              <div class="board-edit-form" *ngIf="editingBoard?.id === board.id">
-                <input 
-                  type="text" 
-                  [(ngModel)]="editingBoardName"
-                  (keyup.enter)="saveBoardEdit()"
-                  (keyup.escape)="cancelBoardEdit()"
-                  class="board-edit-input"
-                  placeholder="Board name">
-                <div class="board-edit-actions">
-                  <button class="save-btn" (click)="saveBoardEdit()" title="Save">✓</button>
-                  <button class="delete-btn" (click)="confirmDeleteBoard($event)" title="Delete">🗑</button>
-                  <button class="cancel-btn" (click)="cancelBoardEdit($event)" title="Cancel">✕</button>
-                </div>
-              </div>
             </div>
+
           </div>
           
           <button 
@@ -97,7 +85,7 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
       </div>
 
       <!-- Main Content -->
-      <div class="main-content" [class.sidebar-collapsed]="!sidebarExpanded">
+      <div class="main-content">
         <header class="board-header">
           <h1>{{ selectedBoard ? selectedBoard.name : 'My Notes Board' }}</h1>
           <div class="header-controls">
@@ -164,7 +152,43 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
         </div>
       </div>
     </div>
+
+    <!-- Edit Board Modal -->
+    <div class="modal-overlay" *ngIf="editingBoard" (click)="cancelEditBoard()">
+
+
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <h3>Edit Board</h3>
+        <input 
+          type="text" 
+          [(ngModel)]="editingBoardName" 
+          placeholder="Board name"
+          class="modal-input"
+          (keyup.enter)="saveEditBoard()">
+        <div class="modal-actions">
+          <button class="btn-secondary" (click)="cancelEditBoard()">Cancel</button>
+          <button class="btn-danger" (click)="showDeleteConfirmation()">Delete</button>
+          <button class="btn-primary" (click)="saveEditBoard()">Save</button>
+
+        </div>
+      </div>
+    </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+      <div class="modal-content delete-confirm-content" (click)="$event.stopPropagation()">
+        <div class="delete-warning-icon">⚠️</div>
+        <h3>Delete Board</h3>
+        <p class="delete-message">Are you sure you want to delete this board and all notes in it? This process is irreversible!</p>
+        <div class="modal-actions">
+          <button class="btn-secondary" (click)="cancelDelete()">Cancel</button>
+          <button class="btn-danger" (click)="confirmDelete()">Delete</button>
+        </div>
+      </div>
+    </div>
   `,
+
+
 
   styles: [`
     .board-container {
@@ -178,11 +202,11 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
     /* Sidebar Styles */
     .sidebar {
       position: fixed;
-      top: 88px;
+      top: 95px;
       left: 0;
       bottom: 0;
       width: 250px;
-      background: rgba(255, 255, 255, 0.95);
+      background: rgba(255, 255, 255, 0.85);
       backdrop-filter: blur(10px);
       box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
       z-index: 100;
@@ -190,9 +214,9 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
       display: flex;
       flex-direction: column;
     }
-    
+
     :host-context(.dark-mode) .sidebar {
-      background: rgba(31, 41, 55, 0.95);
+      background: rgba(31, 41, 55, 0.85);
       box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
     }
     
@@ -278,7 +302,7 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
     
     .board-item.active {
       border-color: #4f46e5;
-      background: #eef2ff;
+      background: #dddcf7;
     }
     
     :host-context(.dark-mode) .board-item.active {
@@ -315,6 +339,13 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
       border-radius: 4px;
       transition: all 0.2s ease;
       opacity: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    :host-context(.dark-mode) .edit-board-btn {
+      color: #9ca3af;
     }
     
     .board-item:hover .edit-board-btn {
@@ -331,75 +362,172 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
       color: #818cf8;
     }
     
-    .board-edit-form {
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
       display: flex;
-      flex-direction: column;
-      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.2s ease;
     }
     
-    .board-edit-input {
-      padding: 8px 10px;
-      border: 1px solid #4f46e5;
-      border-radius: 6px;
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      min-width: 320px;
+      max-width: 90vw;
+      animation: slideIn 0.2s ease;
+    }
+    
+    @keyframes slideIn {
+      from { 
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    :host-context(.dark-mode) .modal-content {
+      background: #1f2937;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    }
+    
+    .modal-content h3 {
+      margin: 0 0 16px 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    
+    :host-context(.dark-mode) .modal-content h3 {
+      color: #f9fafb;
+    }
+    
+    .modal-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
       font-size: 14px;
       outline: none;
       background: white;
       color: #1f2937;
-    }
-    
-    :host-context(.dark-mode) .board-edit-input {
-      background: #1f2937;
-      border-color: #818cf8;
-      color: #f9fafb;
-    }
-    
-    .board-edit-actions {
-      display: flex;
-      gap: 6px;
-      justify-content: flex-end;
-    }
-    
-    .board-edit-actions button {
-      width: 28px;
-      height: 28px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      margin-bottom: 16px;
+      box-sizing: border-box;
       transition: all 0.2s ease;
     }
     
-    .save-btn {
-      background: #10b981;
-      color: white;
+    .modal-input:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
     }
     
-    .save-btn:hover {
-      background: #059669;
+    :host-context(.dark-mode) .modal-input {
+      background: #374151;
+      border-color: #4b5563;
+      color: #f9fafb;
     }
     
-    .delete-btn {
+    :host-context(.dark-mode) .modal-input::placeholder {
+      color: #9ca3af;
+    }
+    
+    :host-context(.dark-mode) .modal-input:focus {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.1);
+    }
+    
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    
+    .modal-actions button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+    
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+    
+    :host-context(.dark-mode) .btn-secondary {
+      background: #4b5563;
+      color: #f9fafb;
+    }
+    
+    :host-context(.dark-mode) .btn-secondary:hover {
+      background: #6b7280;
+    }
+    
+    .btn-danger {
       background: #ef4444;
       color: white;
     }
     
-    .delete-btn:hover {
+    .btn-danger:hover {
       background: #dc2626;
     }
     
-    .cancel-btn {
-      background: #6b7280;
+    .btn-primary {
+      background: #4f46e5;
       color: white;
     }
     
-    .cancel-btn:hover {
-      background: #4b5563;
+    .btn-primary:hover {
+      background: #4338ca;
+    }
+    
+    .delete-confirm-content {
+      text-align: center;
+      max-width: 400px;
+    }
+    
+    .delete-warning-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .delete-message {
+      color: #6b7280;
+      margin: 0 0 24px 0;
+      line-height: 1.5;
+    }
+    
+    :host-context(.dark-mode) .delete-message {
+      color: #9ca3af;
     }
     
     .add-board-btn {
+
       margin-top: 15px;
       padding: 12px;
       background: #4f46e5;
@@ -437,15 +565,9 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
     /* Main Content */
     .main-content {
       flex: 1;
-      margin-left: 250px;
-      transition: margin-left 0.3s ease;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-    }
-    
-    .main-content.sidebar-collapsed {
-      margin-left: 40px;
     }
 
     
@@ -457,7 +579,7 @@ import { trigger, transition, style, animate, query, stagger, group } from '@ang
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 24px 48px;
+      padding: 24px 85px;
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
       box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
@@ -723,9 +845,11 @@ export class BoardComponent implements OnInit, OnDestroy {
   // Board-related properties
   boards: Board[] = [];
   selectedBoard: Board | null = null;
-  sidebarExpanded: boolean = true;
+  sidebarExpanded: boolean = false;
   editingBoard: Board | null = null;
   editingBoardName: string = '';
+  showDeleteConfirm: boolean = false;
+
   
   constructor(
     private noteService: NoteService,
@@ -793,13 +917,13 @@ export class BoardComponent implements OnInit, OnDestroy {
     });
   }
   
-  startEditBoard(event: Event, board: Board) {
+  startEditBoard(board: Board, event: Event) {
     event.stopPropagation();
     this.editingBoard = board;
     this.editingBoardName = board.name;
   }
   
-  saveBoardEdit() {
+  saveEditBoard() {
     if (!this.editingBoard || !this.editingBoardName.trim()) {
       return;
     }
@@ -822,25 +946,21 @@ export class BoardComponent implements OnInit, OnDestroy {
     });
   }
   
-  cancelBoardEdit(event?: Event) {
-    if (event) {
-      event.stopPropagation();
-    }
+  cancelEditBoard() {
     this.editingBoard = null;
     this.editingBoardName = '';
   }
+
   
-  confirmDeleteBoard(event: Event) {
-    event.stopPropagation();
-    const confirmed = confirm('Are you sure you want to delete this board? This process is irreversible!');
-    if (confirmed) {
-      this.deleteBoard();
-    } else {
-      this.cancelBoardEdit();
-    }
+  showDeleteConfirmation() {
+    this.showDeleteConfirm = true;
   }
   
-  deleteBoard() {
+  cancelDelete() {
+    this.showDeleteConfirm = false;
+  }
+  
+  confirmDelete() {
     if (!this.editingBoard) {
       return;
     }
@@ -861,12 +981,15 @@ export class BoardComponent implements OnInit, OnDestroy {
         }
         this.editingBoard = null;
         this.editingBoardName = '';
+        this.showDeleteConfirm = false;
       },
       error: (error) => {
         console.error('Error deleting board:', error);
       }
     });
   }
+
+
   
   loadNotes() {
     if (!this.selectedBoard) {
