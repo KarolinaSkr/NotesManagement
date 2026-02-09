@@ -1218,13 +1218,13 @@ export class BoardComponent implements OnInit, OnDestroy {
     if (!this.selectedBoard) {
       return;
     }
-    
+
     // Clear tag filter if active so new note is visible
     if (this.selectedTag) {
       this.selectedTag = '';
       this.applyFilters();
     }
-    
+
     const newNote: Note = {
       title: '',
       content: '',
@@ -1233,11 +1233,13 @@ export class BoardComponent implements OnInit, OnDestroy {
       color: '#fef3c7',
       tags: []
     };
-    
+
     this.noteService.createNote(newNote, this.selectedBoard.id!).subscribe({
       next: (note) => {
         this.notes.push(note);
         this.filteredNotes = [...this.notes];
+        // Update reminder service with new notes for global reminder checking
+        this.updateReminderServiceNotes();
       },
       error: (error) => {
         console.error('Error creating note:', error);
@@ -1319,5 +1321,10 @@ export class BoardComponent implements OnInit, OnDestroy {
         this.router.navigate(['/login']);
       }
     });
+  }
+
+  private updateReminderServiceNotes(): void {
+    // Reload all notes for the reminder service to include the new note
+    this.reminderService.loadAllNotesForReminders();
   }
 }

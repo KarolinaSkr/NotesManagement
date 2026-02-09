@@ -265,24 +265,11 @@ export class ReminderService {
    * Get all notes with their reminder data merged
    */
   private getAllNotesWithReminders(): Note[] {
-    // Use cached all notes if available
+    // Only use all notes loaded from backend
     if (this.allNotes.length > 0) {
       return this.mergeRemindersWithNotes(this.allNotes);
     }
-
-    // Fallback to localStorage notes
-    const notesJson = localStorage.getItem('notes');
-    if (!notesJson) {
-      return [];
-    }
-
-    try {
-      const notes: Note[] = JSON.parse(notesJson);
-      return this.mergeRemindersWithNotes(notes);
-    } catch (error) {
-      console.error('Error parsing notes from localStorage:', error);
-      return [];
-    }
+    return [];
   }
 
   /**
